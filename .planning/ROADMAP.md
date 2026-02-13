@@ -12,7 +12,7 @@ Transform the existing VCT frame analysis pipeline into a persistent event loggi
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Event Detection Foundation** - Core state change detection with data quality validation
+- [x] **Phase 1: Event Detection Foundation** - Core state change detection with data quality validation
 - [ ] **Phase 2: Event Storage & Session Management** - Persistent JSONL event logs with match sessions
 - [ ] **Phase 3: Pipeline Integration** - Unified EventPipeline orchestrating full workflow
 - [ ] **Phase 4: Metadata Auto-Detection** - Auto-extract team names and map from broadcast overlay
@@ -40,8 +40,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01-PLAN.md -- State management foundation (GameState model, StateTracker, StateValidator)
 - [x] 01-02-PLAN.md -- Event schemas and replay detector (frozen event dataclasses, ReplayDetector)
-- [ ] 01-03-PLAN.md -- Event emitter and quality metrics (EventEmitter, QualityMetrics, structlog)
-- [ ] 01-04-PLAN.md -- Unit tests for all Phase 1 components (pytest suite)
+- [x] 01-03-PLAN.md -- Event emitter and quality metrics (EventEmitter, QualityMetrics, structlog)
+- [x] 01-04-PLAN.md -- Unit tests for all Phase 1 components (pytest suite)
 
 ### Phase 2: Event Storage & Session Management
 **Goal**: Store events as persistent, crash-safe JSONL logs organized by match sessions with metadata
@@ -108,11 +108,11 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Event Detection Foundation | 2/4 | In progress | - |
+| 1. Event Detection Foundation | 4/4 | ✓ Complete | 2026-02-13 |
 | 2. Event Storage & Session Management | 0/TBD | Not started | - |
 | 3. Pipeline Integration | 0/TBD | Not started | - |
 | 4. Metadata Auto-Detection | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-12*
-*Last updated: 2026-02-13*
+*Last updated: 2026-02-13 — Phase 1 complete*

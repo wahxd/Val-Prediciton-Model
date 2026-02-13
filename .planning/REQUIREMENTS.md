@@ -15,21 +15,21 @@
 
 ### Event Detection
 
-- [ ] **EVNT-01**: Detect round end events when score increments between frames
-- [ ] **EVNT-02**: Detect kill events when alive count decreases for either team
-- [ ] **EVNT-03**: Detect spike plant events when spike status transitions to planted
-- [ ] **EVNT-04**: Detect spike defuse events when spike status transitions from planted to not-planted without detonation
-- [ ] **EVNT-05**: Detect spike detonate events when spike status transitions to detonated
-- [ ] **EVNT-06**: Detect round start events when timer resets and alive counts return to 5v5
-- [ ] **EVNT-07**: State changes persist for 3+ consecutive frames before emitting event (debouncing)
+- [x] **EVNT-01**: Detect round end events when score increments between frames
+- [x] **EVNT-02**: Detect kill events when alive count decreases for either team
+- [x] **EVNT-03**: Detect spike plant events when spike status transitions to planted
+- [x] **EVNT-04**: Detect spike defuse events when spike status transitions from planted to not-planted without detonation
+- [x] **EVNT-05**: Detect spike detonate events when spike status transitions to detonated
+- [x] **EVNT-06**: Detect round start events when timer resets and alive counts return to 5v5
+- [x] **EVNT-07**: State changes persist for 3+ consecutive frames before emitting event (debouncing)
 
 ### Data Quality
 
-- [ ] **QUAL-01**: Detect replay footage via timer regression (timer value increases instead of decreasing)
-- [ ] **QUAL-02**: Validate alive count coherence (counts only decrease within a round, reset at round start)
-- [ ] **QUAL-03**: Validate score monotonicity (score never decreases within a match half)
-- [ ] **QUAL-04**: Suppress all event emission during detected replay segments
-- [ ] **QUAL-05**: Log data quality warnings when OCR confidence is low or values are out of expected range
+- [x] **QUAL-01**: Detect replay footage via timer regression (timer value increases instead of decreasing)
+- [x] **QUAL-02**: Validate alive count coherence (counts only decrease within a round, reset at round start)
+- [x] **QUAL-03**: Validate score monotonicity (score never decreases within a match half)
+- [x] **QUAL-04**: Suppress all event emission during detected replay segments
+- [x] **QUAL-05**: Log data quality warnings when OCR confidence is low or values are out of expected range
 
 ### Storage
 
@@ -96,18 +96,18 @@
 | EXTR-03 | Existing | Complete |
 | EXTR-04 | Existing | Complete |
 | EXTR-05 | Existing | Complete |
-| EVNT-01 | Phase 1 | Pending |
-| EVNT-02 | Phase 1 | Pending |
-| EVNT-03 | Phase 1 | Pending |
-| EVNT-04 | Phase 1 | Pending |
-| EVNT-05 | Phase 1 | Pending |
-| EVNT-06 | Phase 1 | Pending |
-| EVNT-07 | Phase 1 | Pending |
-| QUAL-01 | Phase 1 | Pending |
-| QUAL-02 | Phase 1 | Pending |
-| QUAL-03 | Phase 1 | Pending |
-| QUAL-04 | Phase 1 | Pending |
-| QUAL-05 | Phase 1 | Pending |
+| EVNT-01 | Phase 1 | Complete |
+| EVNT-02 | Phase 1 | Complete |
+| EVNT-03 | Phase 1 | Complete |
+| EVNT-04 | Phase 1 | Complete |
+| EVNT-05 | Phase 1 | Complete |
+| EVNT-06 | Phase 1 | Complete |
+| EVNT-07 | Phase 1 | Complete |
+| QUAL-01 | Phase 1 | Complete |
+| QUAL-02 | Phase 1 | Complete |
+| QUAL-03 | Phase 1 | Complete |
+| QUAL-04 | Phase 1 | Complete |
+| QUAL-05 | Phase 1 | Complete |
 | STOR-01 | Phase 2 | Pending |
 | STOR-02 | Phase 2 | Pending |
 | STOR-03 | Phase 2 | Pending |
@@ -139,4 +139,4 @@
 
 ---
 *Requirements defined: 2026-02-12*
-*Last updated: 2026-02-12 after roadmap creation*
+*Last updated: 2026-02-13 — Phase 1 requirements complete*
