@@ -84,10 +84,13 @@ Phases 2-4 superseded by Valoscribe adoption. Valoscribe handles event storage, 
   4. The Valoscribe data directory path is configurable (not hardcoded) and no match data is duplicated into this repo
   5. A map index lists all available maps with metadata summary (teams, map name, date, event count, quality score)
 
-**Plans**: TBD
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (to be planned)
+- [ ] 05-01-PLAN.md -- Foundation: Pydantic schemas, config, dependencies, test fixtures
+- [ ] 05-02-PLAN.md -- Data loader: map discovery, JSONL/CSV/metadata parsing, map index
+- [ ] 05-03-PLAN.md -- Quality scoring: 5 quality signals, tiered scoring, data catalog
+- [ ] 05-04-PLAN.md -- Audit reports (JSON + Markdown), CLI wrapper, integration run
 
 ### Phase 6: Valoscribe Adaptation
 **Goal**: Modify Valoscribe to output ALL possible extractable data (not just what the model might need), port the ReplayDetector for improved accuracy, and validate that output remains consistent on the original 71 maps
@@ -194,7 +197,7 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 | 2. Event Storage & Session Management | v1 | - | Shelved | - |
 | 3. Pipeline Integration | v1 | - | Shelved | - |
 | 4. Metadata Auto-Detection | v1 | - | Shelved | - |
-| 5. Data Pipeline & Validation | v2 | 0/TBD | Not started | - |
+| 5. Data Pipeline & Validation | v2 | 0/4 | Planned | - |
 | 6. Valoscribe Adaptation | v2 | 0/TBD | Not started | - |
 | 7. Dataset Expansion (VOD Processing) | v2 | 0/TBD | Not started | - |
 | 8. Feature Engineering | v2 | 0/TBD | Not started | - |
@@ -205,4 +208,5 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 *Roadmap created: 2026-02-12 (v1)*
 *v2 phases added: 2026-02-13*
 *v2 phases restructured: 2026-02-13 (Valoscribe + VOD processing moved early)*
+*Phase 5 planned: 2026-02-13 (4 plans in 3 waves)*
 *Last updated: 2026-02-13*
