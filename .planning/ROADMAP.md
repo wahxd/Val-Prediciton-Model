@@ -105,10 +105,14 @@ Plans:
   3. ReplayDetector from Phase 1 is ported into Valoscribe's GameStateManager, and reprocessing the 71 Champions 2025 maps achieves a validation rate above 87%
   4. The modified Valoscribe pipeline produces output consistent with the original 71 maps (no regressions in previously passing maps)
 
-**Plans**: TBD
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (to be planned)
+- [ ] 06-01-PLAN.md -- Port ReplayDetector to Valoscribe + integrate into GameStateManager
+- [ ] 06-02-PLAN.md -- New data extraction: buy phase, ult usage, timeouts, side tracking
+- [ ] 06-03-PLAN.md -- Output adapter module + file naming alignment
+- [ ] 06-04-PLAN.md -- Schema documentation + Phase 5 Pydantic loader updates for new event types
+- [ ] 06-05-PLAN.md -- Baseline backup, reprocessing 71 maps, before/after validation
 
 ### Phase 7: Dataset Expansion (VOD Processing)
 **Goal**: Start processing additional VCT VODs through the modified Valoscribe pipeline to expand the training dataset beyond 71 maps — this is the long-running bottleneck that runs in the background while Phases 8-9 execute
@@ -198,7 +202,7 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 | 3. Pipeline Integration | v1 | - | Shelved | - |
 | 4. Metadata Auto-Detection | v1 | - | Shelved | - |
 | 5. Data Pipeline & Validation | v2 | 4/4 | Complete | 2026-02-13 |
-| 6. Valoscribe Adaptation | v2 | 0/TBD | Not started | - |
+| 6. Valoscribe Adaptation | v2 | 0/5 | Planned | - |
 | 7. Dataset Expansion (VOD Processing) | v2 | 0/TBD | Not started | - |
 | 8. Feature Engineering | v2 | 0/TBD | Not started | - |
 | 9. Baseline Model & Evaluation | v2 | 0/TBD | Not started | - |
@@ -210,4 +214,5 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 *v2 phases restructured: 2026-02-13 (Valoscribe + VOD processing moved early)*
 *Phase 5 planned: 2026-02-13 (4 plans in 3 waves)*
 *Phase 5 complete: 2026-02-13 (4/4 plans, 5/5 must-haves verified, 44 tests)*
+*Phase 6 planned: 2026-02-13 (5 plans in 4 waves)*
 *Last updated: 2026-02-13*
