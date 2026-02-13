@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 Phase: 5 of 10 (Data Pipeline & Validation)
 Plan: — (not yet planned)
 Status: Ready to plan
-Last activity: 2026-02-13 — v2 roadmap restructured (Valoscribe + VOD processing moved early)
+Last activity: 2026-02-13 — Quick task 002 complete (Claude Code QoL integrations research)
 
 Progress: [##░░░░░░░░] 13% (v1 Phase 1 complete; v2 not started)
 
@@ -35,6 +35,7 @@ Progress: [##░░░░░░░░] 13% (v1 Phase 1 complete; v2 not started)
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-event-detection-foundation | 4 | 16 min | 4 min |
+| quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
 
@@ -56,7 +57,15 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+- Set up CLAUDE.md with project-specific content (from quick task 002 research)
+- Update settings.local.json with expanded permissions + MCP servers (from quick task 002 research)
+- Install DuckDB + Context7 + Sequential Thinking MCP servers before Phase 5
+
+### Quick Tasks Completed
+
+| # | Description | Date | Directory |
+|---|-------------|------|-----------|
+| 002 | Claude Code QoL integrations research (MCP servers, plugins, skills, repos) | 2026-02-13 | [002-claude-code-qol-integrations-research](./quick/002-claude-code-qol-integrations-research/) |
 
 ### Blockers/Concerns
 
@@ -69,8 +78,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: v2 roadmap restructured, ready to plan Phase 5
+Stopped at: Quick task 002 complete, ready to plan Phase 5
 Resume file: None
 
 ---
-*Next step: /gsd:plan-phase 5*
+*Next step: Apply quick task 002 recommendations (CLAUDE.md, settings, MCP servers), then /gsd:plan-phase 5*
