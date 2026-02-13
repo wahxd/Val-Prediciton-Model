@@ -47,6 +47,13 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 - [ ] **DATA-06**: Generate audit report identifying which maps are usable vs should be excluded
 - [ ] **DATA-07**: Configuration-based path to Valoscribe data directory (no data duplication into this repo)
 
+### Valoscribe Adaptation
+
+- [ ] **VSCR-01**: Catalogue Valoscribe's full output format — every field, event type, and extractable data point documented
+- [ ] **VSCR-02**: Add output adapter to Valoscribe that exports ALL extractable data (maximizing available signal, not limited to known feature needs)
+- [ ] **VSCR-03**: Port ReplayDetector into Valoscribe's GameStateManager to improve validation rate above 87%
+- [ ] **VSCR-04**: Validate modified Valoscribe pipeline produces consistent output on the original 71 Champions 2025 maps
+
 ### Feature Engineering
 
 - [ ] **FEAT-01**: Extract round-level features from events (score differential, alive differential, spike status, economy tier)
@@ -83,13 +90,6 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 - [ ] **SERS-01**: Compute BO3/BO5 series win probability from per-map win probabilities using combinatorial formula
 - [ ] **SERS-02**: Incorporate map veto data (which team picked which map) into per-map predictions where available
 - [ ] **SERS-03**: Series-level calibration validation (separate from map-level)
-
-### Valoscribe Adaptation
-
-- [ ] **VSCR-01**: Identify which Valoscribe outputs the model actually uses vs what's noise (informed by SHAP/feature importance)
-- [ ] **VSCR-02**: Add output adapter to Valoscribe that exports data in the format feature engineering expects
-- [ ] **VSCR-03**: Port ReplayDetector into Valoscribe's GameStateManager to improve validation rate above 87%
-- [ ] **VSCR-04**: Validate modified Valoscribe pipeline produces consistent output on the original 71 Champions 2025 maps
 
 ### Dataset Expansion
 
@@ -154,36 +154,36 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 | DATA-05 | Phase 5 | Pending |
 | DATA-06 | Phase 5 | Pending |
 | DATA-07 | Phase 5 | Pending |
-| FEAT-01 | Phase 6 | Pending |
-| FEAT-02 | Phase 6 | Pending |
-| FEAT-03 | Phase 6 | Pending |
-| FEAT-04 | Phase 6 | Pending |
-| FEAT-05 | Phase 6 | Pending |
-| FEAT-06 | Phase 6 | Pending |
-| FEAT-07 | Phase 6 | Pending |
-| FEAT-08 | Phase 6 | Pending |
-| MODL-01 | Phase 7 | Pending |
-| MODL-02 | Phase 8 | Pending |
-| MODL-03 | Phase 7 | Pending |
-| MODL-04 | Phase 7 | Pending |
-| MODL-05 | Phase 7 | Pending |
-| MODL-06 | Phase 8 | Pending |
-| MODL-07 | Phase 7 | Pending |
-| EVAL-01 | Phase 7 | Pending |
-| EVAL-02 | Phase 7 | Pending |
-| EVAL-03 | Phase 7 | Pending |
-| EVAL-04 | Phase 7 | Pending |
-| EVAL-05 | Phase 7 | Pending |
-| EVAL-06 | Phase 7 | Pending |
-| EVAL-07 | Phase 7 | Pending |
-| SERS-01 | Phase 8 | Pending |
-| SERS-02 | Phase 8 | Pending |
-| SERS-03 | Phase 8 | Pending |
-| VSCR-01 | Phase 9 | Pending |
-| VSCR-02 | Phase 9 | Pending |
-| VSCR-03 | Phase 9 | Pending |
-| VSCR-04 | Phase 9 | Pending |
-| EXPN-01 | Phase 10 | Pending |
+| VSCR-01 | Phase 6 | Pending |
+| VSCR-02 | Phase 6 | Pending |
+| VSCR-03 | Phase 6 | Pending |
+| VSCR-04 | Phase 6 | Pending |
+| FEAT-01 | Phase 8 | Pending |
+| FEAT-02 | Phase 8 | Pending |
+| FEAT-03 | Phase 8 | Pending |
+| FEAT-04 | Phase 8 | Pending |
+| FEAT-05 | Phase 8 | Pending |
+| FEAT-06 | Phase 8 | Pending |
+| FEAT-07 | Phase 8 | Pending |
+| FEAT-08 | Phase 8 | Pending |
+| MODL-01 | Phase 9 | Pending |
+| MODL-02 | Phase 10 | Pending |
+| MODL-03 | Phase 9 | Pending |
+| MODL-04 | Phase 9 | Pending |
+| MODL-05 | Phase 9 | Pending |
+| MODL-06 | Phase 10 | Pending |
+| MODL-07 | Phase 9 | Pending |
+| EVAL-01 | Phase 9 | Pending |
+| EVAL-02 | Phase 9 | Pending |
+| EVAL-03 | Phase 9 | Pending |
+| EVAL-04 | Phase 9 | Pending |
+| EVAL-05 | Phase 9 | Pending |
+| EVAL-06 | Phase 9 | Pending |
+| EVAL-07 | Phase 9 | Pending |
+| SERS-01 | Phase 10 | Pending |
+| SERS-02 | Phase 10 | Pending |
+| SERS-03 | Phase 10 | Pending |
+| EXPN-01 | Phase 7 | Pending |
 | EXPN-02 | Phase 10 | Pending |
 | EXPN-03 | Phase 10 | Pending |
 | EXPN-04 | Phase 10 | Pending |
@@ -195,12 +195,12 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 
 **Phase Distribution:**
 - Phase 5: 7 requirements (DATA-01 to DATA-07)
-- Phase 6: 8 requirements (FEAT-01 to FEAT-08)
-- Phase 7: 12 requirements (MODL-01/03/04/05/07, EVAL-01 to EVAL-07)
-- Phase 8: 5 requirements (MODL-02/06, SERS-01 to SERS-03)
-- Phase 9: 4 requirements (VSCR-01 to VSCR-04)
-- Phase 10: 4 requirements (EXPN-01 to EXPN-04)
+- Phase 6: 4 requirements (VSCR-01 to VSCR-04)
+- Phase 7: 1 requirement (EXPN-01)
+- Phase 8: 8 requirements (FEAT-01 to FEAT-08)
+- Phase 9: 12 requirements (MODL-01/03/04/05/07, EVAL-01 to EVAL-07)
+- Phase 10: 8 requirements (MODL-02/06, SERS-01 to SERS-03, EXPN-02 to EXPN-04)
 
 ---
 *Requirements defined: 2026-02-13*
-*Last updated: 2026-02-13 after v2 roadmap creation*
+*Last updated: 2026-02-13 after v2 roadmap restructure*

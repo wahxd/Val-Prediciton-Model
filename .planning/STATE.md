@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 Phase: 5 of 10 (Data Pipeline & Validation)
 Plan: — (not yet planned)
 Status: Ready to plan
-Last activity: 2026-02-13 — v2 roadmap created (Phases 5-10)
+Last activity: 2026-02-13 — v2 roadmap restructured (Valoscribe + VOD processing moved early)
 
 Progress: [##░░░░░░░░] 13% (v1 Phase 1 complete; v2 not started)
 
@@ -52,6 +52,7 @@ Recent decisions affecting current work:
 - Walk-forward temporal validation only — Never random train/test splits (research finding)
 - Log loss as primary metric — Calibration matters more than accuracy for betting (research finding)
 - Start with logistic regression baseline — Prove signal exists before adding complexity (research finding)
+- Restructure v2 phases — Adapt Valoscribe early, start VOD processing ASAP, do feature engineering while VODs process
 
 ### Pending Todos
 
@@ -59,15 +60,16 @@ None yet.
 
 ### Blockers/Concerns
 
-- Valoscribe's 71-map dataset may be insufficient for reliable model training — plan to expand in Phase 10
+- Valoscribe's 71-map dataset may be insufficient for reliable model training — VOD processing moved to Phase 7 to start expansion early
 - Valoscribe's 87% validation rate means ~13% of maps may have data quality issues — Phase 5 audit will quantify
-- Single-tournament bias (Champions 2025 only) — cross-tournament validation deferred to Phase 10
-- Elo ratings must be constructed from VCT historical results — no existing ratings available (Phase 6)
+- Single-tournament bias (Champions 2025 only) — cross-tournament validation in Phase 10 using expanded dataset from Phase 7
+- Elo ratings must be constructed from VCT historical results — no existing ratings available (Phase 8)
+- VOD processing bottleneck: 20-40 min per map — Phase 7 starts processing early, runs in background during Phases 8-9
 
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: v2 roadmap created, ready to plan Phase 5
+Stopped at: v2 roadmap restructured, ready to plan Phase 5
 Resume file: None
 
 ---

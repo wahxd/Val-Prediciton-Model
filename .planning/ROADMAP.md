@@ -59,12 +59,14 @@ Phases 2-4 superseded by Valoscribe adoption. Valoscribe handles event storage, 
 - Integer phases (5, 6, 7, 8, 9, 10): Planned milestone work
 - Decimal phases (7.1, 7.2): Urgent insertions if needed (marked with INSERTED)
 
-- [ ] **Phase 5: Data Pipeline & Validation** - Ingest Valoscribe output with quality scoring and audit
-- [ ] **Phase 6: Feature Engineering** - Transform raw events into predictive features at round, map, and match level
-- [ ] **Phase 7: Baseline Model & Evaluation** - Logistic regression baseline with walk-forward temporal validation
-- [ ] **Phase 8: Advanced Model & Series Prediction** - XGBoost with tuning plus BO3/BO5 series probability
-- [ ] **Phase 9: Valoscribe Adaptation** - Improve upstream data pipeline based on model feedback
-- [ ] **Phase 10: Dataset Expansion & Cross-Tournament Validation** - Expand beyond Champions 2025 and validate generalization
+**Key Insight:** VOD processing is the bottleneck (20-40 min per map). Valoscribe adaptation and dataset expansion are moved early so VOD processing runs in the background while feature engineering and modeling proceed on existing data.
+
+- [ ] **Phase 5: Data Pipeline & Validation** - Ingest Valoscribe output, understand full data format, quality scoring, audit
+- [ ] **Phase 6: Valoscribe Adaptation** - Port ReplayDetector, add output adapter for ALL possible data, validate on 71 maps
+- [ ] **Phase 7: Dataset Expansion (VOD Processing)** - Start processing additional VODs via modified Valoscribe (runs in background)
+- [ ] **Phase 8: Feature Engineering** - Transform raw events into predictive features at round, map, and match level
+- [ ] **Phase 9: Baseline Model & Evaluation** - Logistic regression baseline with walk-forward temporal validation
+- [ ] **Phase 10: Advanced Model, Series Prediction & Retrain** - XGBoost, Optuna, BO3/BO5 series, retrain on expanded dataset
 
 ## Phase Details
 
@@ -87,10 +89,44 @@ Phases 2-4 superseded by Valoscribe adoption. Valoscribe handles event storage, 
 Plans:
 - [ ] TBD (to be planned)
 
-### Phase 6: Feature Engineering
-**Goal**: Transform Valoscribe event data into predictive features at three levels (round, map, match) with a feature registry that enables reproducible experiments
+### Phase 6: Valoscribe Adaptation
+**Goal**: Modify Valoscribe to output ALL possible extractable data (not just what the model might need), port the ReplayDetector for improved accuracy, and validate that output remains consistent on the original 71 maps
 
-**Depends on**: Phase 5 (requires parsed event data and quality-filtered map set)
+**Depends on**: Phase 5 (requires understanding of Valoscribe's current output format from data loading and audit)
+
+**Requirements**: VSCR-01, VSCR-02, VSCR-03, VSCR-04
+
+**Success Criteria** (what must be TRUE):
+  1. Valoscribe's full output format is documented: every field, every event type, every piece of extractable data catalogued
+  2. Valoscribe exports ALL extractable data via an output adapter (maximizing available signal for downstream feature engineering)
+  3. ReplayDetector from Phase 1 is ported into Valoscribe's GameStateManager, and reprocessing the 71 Champions 2025 maps achieves a validation rate above 87%
+  4. The modified Valoscribe pipeline produces output consistent with the original 71 maps (no regressions in previously passing maps)
+
+**Plans**: TBD
+
+Plans:
+- [ ] TBD (to be planned)
+
+### Phase 7: Dataset Expansion (VOD Processing)
+**Goal**: Start processing additional VCT VODs through the modified Valoscribe pipeline to expand the training dataset beyond 71 maps — this is the long-running bottleneck that runs in the background while Phases 8-9 execute
+
+**Depends on**: Phase 6 (requires modified Valoscribe with output adapter and ReplayDetector)
+
+**Requirements**: EXPN-01
+
+**Success Criteria** (what must be TRUE):
+  1. At least 30 additional VCT maps from a different tournament (not Champions 2025) are queued for processing via the modified Valoscribe pipeline
+  2. Processing is running (or complete) in the background, with progress trackable (maps processed / maps total)
+
+**Plans**: TBD
+
+Plans:
+- [ ] TBD (to be planned)
+
+### Phase 8: Feature Engineering
+**Goal**: Transform Valoscribe event data into predictive features at three levels (round, map, match) with a feature registry that enables reproducible experiments — informed by ALL available data from the adapted Valoscribe output
+
+**Depends on**: Phase 5 (requires parsed event data and quality-filtered map set); Phase 6 (requires knowledge of all available data fields)
 
 **Requirements**: FEAT-01, FEAT-02, FEAT-03, FEAT-04, FEAT-05, FEAT-06, FEAT-07, FEAT-08
 
@@ -106,10 +142,10 @@ Plans:
 Plans:
 - [ ] TBD (to be planned)
 
-### Phase 7: Baseline Model & Evaluation
+### Phase 9: Baseline Model & Evaluation
 **Goal**: Train a logistic regression baseline on real VCT data with walk-forward temporal validation, proving there is predictive signal and establishing the evaluation framework that all future models must pass
 
-**Depends on**: Phase 6 (requires feature engineering pipeline and at least the baseline feature set)
+**Depends on**: Phase 8 (requires feature engineering pipeline and at least the baseline feature set)
 
 **Requirements**: MODL-01, MODL-03, MODL-04, MODL-05, MODL-07, EVAL-01, EVAL-02, EVAL-03, EVAL-04, EVAL-05, EVAL-06, EVAL-07
 
@@ -125,54 +161,20 @@ Plans:
 Plans:
 - [ ] TBD (to be planned)
 
-### Phase 8: Advanced Model & Series Prediction
-**Goal**: Improve prediction quality with XGBoost gradient boosting and extend from map-level to series-level (BO3/BO5) win probability with separate calibration validation
+### Phase 10: Advanced Model, Series Prediction & Retrain
+**Goal**: Improve prediction quality with XGBoost gradient boosting, extend to series-level (BO3/BO5) win probability, and retrain on the expanded dataset from Phase 7 when VOD processing completes
 
-**Depends on**: Phase 7 (requires baseline model, evaluation framework, and calibration pipeline)
+**Depends on**: Phase 9 (requires baseline model and evaluation framework); Phase 7 (expanded dataset available for retrain)
 
-**Requirements**: MODL-02, MODL-06, SERS-01, SERS-02, SERS-03
+**Requirements**: MODL-02, MODL-06, SERS-01, SERS-02, SERS-03, EXPN-02, EXPN-03, EXPN-04
 
 **Success Criteria** (what must be TRUE):
   1. An XGBoost model with regularization constraints (max_depth=4, min_child_weight tuned for n=71) is trained and compared against the logistic regression baseline on the same walk-forward validation
   2. Hyperparameter tuning via Optuna Bayesian optimization finds a configuration that improves log loss over baseline (or confirms simpler model is sufficient)
   3. BO3/BO5 series win probabilities are computed from per-map win probabilities using the combinatorial formula, incorporating map veto data where available
   4. Series-level calibration is validated separately from map-level calibration, with its own reliability diagram
-
-**Plans**: TBD
-
-Plans:
-- [ ] TBD (to be planned)
-
-### Phase 9: Valoscribe Adaptation
-**Goal**: Improve the upstream Valoscribe pipeline based on what the model actually needs, increasing data quality above 87% validation rate and ensuring output format alignment
-
-**Depends on**: Phase 7 (requires SHAP/feature importance to know which outputs matter); can run in parallel with Phase 8
-
-**Requirements**: VSCR-01, VSCR-02, VSCR-03, VSCR-04
-
-**Success Criteria** (what must be TRUE):
-  1. SHAP analysis from Phase 7/8 has identified which Valoscribe outputs the model uses vs what is noise, and findings are documented
-  2. Valoscribe exports data in the exact format feature engineering expects via an output adapter (no manual format conversion needed)
-  3. ReplayDetector from Phase 1 is ported into Valoscribe's GameStateManager, and reprocessing the 71 Champions 2025 maps achieves a validation rate above 87%
-  4. The modified Valoscribe pipeline produces output consistent with the original 71 maps (no regressions in previously passing maps)
-
-**Plans**: TBD
-
-Plans:
-- [ ] TBD (to be planned)
-
-### Phase 10: Dataset Expansion & Cross-Tournament Validation
-**Goal**: Expand training data beyond Champions 2025 and validate that the model generalizes across tournaments, metas, and patches — the gate before trusting it for real money
-
-**Depends on**: Phase 8 (requires tuned model); Phase 9 (requires improved Valoscribe for processing new VODs)
-
-**Requirements**: EXPN-01, EXPN-02, EXPN-03, EXPN-04
-
-**Success Criteria** (what must be TRUE):
-  1. At least 30 additional VCT maps from a different tournament (not Champions 2025) are processed via the modified Valoscribe pipeline and pass quality validation
-  2. Cross-tournament validation (train on Champions 2025, test on new tournament) produces a measurable log loss and accuracy, establishing the generalization baseline
-  3. The model is retrained on the expanded dataset (100+ maps) and log loss improves compared to the Champions-only model
-  4. If cross-tournament accuracy drops more than 10 percentage points compared to within-tournament validation, the gap is flagged with specific investigation findings
+  5. Model is retrained on the expanded dataset (100+ maps from Phase 7) and log loss is compared to the Champions-only model
+  6. Cross-tournament validation (train on Champions 2025, test on new tournament) produces a measurable log loss, and any accuracy drop >10pp is flagged with investigation findings
 
 **Plans**: TBD
 
@@ -182,8 +184,9 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 5 -> 6 -> 7 -> 8 -> 9 -> 10
-(Phase 9 can run in parallel with Phase 8 after Phase 7 completes)
+Phases execute: 5 -> 6 -> 7 -> 8 -> 9 -> 10
+Phase 7 (VOD processing) runs in background while Phases 8-9 execute.
+Phase 10 uses expanded dataset from Phase 7 when available.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -192,13 +195,14 @@ Phases execute in numeric order: 5 -> 6 -> 7 -> 8 -> 9 -> 10
 | 3. Pipeline Integration | v1 | - | Shelved | - |
 | 4. Metadata Auto-Detection | v1 | - | Shelved | - |
 | 5. Data Pipeline & Validation | v2 | 0/TBD | Not started | - |
-| 6. Feature Engineering | v2 | 0/TBD | Not started | - |
-| 7. Baseline Model & Evaluation | v2 | 0/TBD | Not started | - |
-| 8. Advanced Model & Series Prediction | v2 | 0/TBD | Not started | - |
-| 9. Valoscribe Adaptation | v2 | 0/TBD | Not started | - |
-| 10. Dataset Expansion & Cross-Tournament Validation | v2 | 0/TBD | Not started | - |
+| 6. Valoscribe Adaptation | v2 | 0/TBD | Not started | - |
+| 7. Dataset Expansion (VOD Processing) | v2 | 0/TBD | Not started | - |
+| 8. Feature Engineering | v2 | 0/TBD | Not started | - |
+| 9. Baseline Model & Evaluation | v2 | 0/TBD | Not started | - |
+| 10. Advanced Model, Series Prediction & Retrain | v2 | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-12 (v1)*
 *v2 phases added: 2026-02-13*
+*v2 phases restructured: 2026-02-13 (Valoscribe + VOD processing moved early)*
 *Last updated: 2026-02-13*
