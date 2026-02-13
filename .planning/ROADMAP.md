@@ -38,8 +38,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 4 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- State management foundation (GameState model, StateTracker, StateValidator)
-- [ ] 01-02-PLAN.md -- Event schemas and replay detector (frozen event dataclasses, ReplayDetector)
+- [x] 01-01-PLAN.md -- State management foundation (GameState model, StateTracker, StateValidator)
+- [x] 01-02-PLAN.md -- Event schemas and replay detector (frozen event dataclasses, ReplayDetector)
 - [ ] 01-03-PLAN.md -- Event emitter and quality metrics (EventEmitter, QualityMetrics, structlog)
 - [ ] 01-04-PLAN.md -- Unit tests for all Phase 1 components (pytest suite)
 
@@ -108,11 +108,11 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Event Detection Foundation | 0/4 | Planned | - |
+| 1. Event Detection Foundation | 2/4 | In progress | - |
 | 2. Event Storage & Session Management | 0/TBD | Not started | - |
 | 3. Pipeline Integration | 0/TBD | Not started | - |
 | 4. Metadata Auto-Detection | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-12*
-*Last updated: 2026-02-12*
+*Last updated: 2026-02-13*
