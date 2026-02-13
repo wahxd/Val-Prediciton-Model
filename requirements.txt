@@ -1,0 +1,8 @@
+streamlit
+opencv-python
+numpy
+pytesseract
+streamlink
+scikit-learn
+pandas
+watchdog
