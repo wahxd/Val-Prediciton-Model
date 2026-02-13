@@ -35,10 +35,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   6. State changes persist for 3+ consecutive frames before triggering events (no event storms from OCR flicker)
   7. System logs data quality warnings when OCR confidence is low or values are out of expected range
 
-**Plans**: TBD
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (to be planned)
+- [ ] 01-01-PLAN.md -- State management foundation (GameState model, StateTracker, StateValidator)
+- [ ] 01-02-PLAN.md -- Event schemas and replay detector (frozen event dataclasses, ReplayDetector)
+- [ ] 01-03-PLAN.md -- Event emitter and quality metrics (EventEmitter, QualityMetrics, structlog)
+- [ ] 01-04-PLAN.md -- Unit tests for all Phase 1 components (pytest suite)
 
 ### Phase 2: Event Storage & Session Management
 **Goal**: Store events as persistent, crash-safe JSONL logs organized by match sessions with metadata
@@ -68,7 +71,7 @@ Plans:
 **Requirements**: PIPE-01, PIPE-02, PIPE-03, PIPE-04
 
 **Success Criteria** (what must be TRUE):
-  1. EventPipeline orchestrates full workflow: frame capture → state extraction → state diffing → event emission → storage
+  1. EventPipeline orchestrates full workflow: frame capture -> state extraction -> state diffing -> event emission -> storage
   2. GameWatcher uses EventPipeline instead of directly writing game_state.json
   3. Pipeline handles stream reconnection without losing match session context
   4. Adding new event types doesn't require modifying existing pipeline code (extensible registration system)
@@ -101,11 +104,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Event Detection Foundation | 0/TBD | Not started | - |
+| 1. Event Detection Foundation | 0/4 | Planned | - |
 | 2. Event Storage & Session Management | 0/TBD | Not started | - |
 | 3. Pipeline Integration | 0/TBD | Not started | - |
 | 4. Metadata Auto-Detection | 0/TBD | Not started | - |
