@@ -96,41 +96,47 @@
 | EXTR-03 | Existing | Complete |
 | EXTR-04 | Existing | Complete |
 | EXTR-05 | Existing | Complete |
-| EVNT-01 | TBD | Pending |
-| EVNT-02 | TBD | Pending |
-| EVNT-03 | TBD | Pending |
-| EVNT-04 | TBD | Pending |
-| EVNT-05 | TBD | Pending |
-| EVNT-06 | TBD | Pending |
-| EVNT-07 | TBD | Pending |
-| QUAL-01 | TBD | Pending |
-| QUAL-02 | TBD | Pending |
-| QUAL-03 | TBD | Pending |
-| QUAL-04 | TBD | Pending |
-| QUAL-05 | TBD | Pending |
-| STOR-01 | TBD | Pending |
-| STOR-02 | TBD | Pending |
-| STOR-03 | TBD | Pending |
-| STOR-04 | TBD | Pending |
-| SESS-01 | TBD | Pending |
-| SESS-02 | TBD | Pending |
-| SESS-03 | TBD | Pending |
-| SESS-04 | TBD | Pending |
-| META-01 | TBD | Pending |
-| META-02 | TBD | Pending |
-| META-03 | TBD | Pending |
-| META-04 | TBD | Pending |
-| META-05 | TBD | Pending |
-| PIPE-01 | TBD | Pending |
-| PIPE-02 | TBD | Pending |
-| PIPE-03 | TBD | Pending |
-| PIPE-04 | TBD | Pending |
+| EVNT-01 | Phase 1 | Pending |
+| EVNT-02 | Phase 1 | Pending |
+| EVNT-03 | Phase 1 | Pending |
+| EVNT-04 | Phase 1 | Pending |
+| EVNT-05 | Phase 1 | Pending |
+| EVNT-06 | Phase 1 | Pending |
+| EVNT-07 | Phase 1 | Pending |
+| QUAL-01 | Phase 1 | Pending |
+| QUAL-02 | Phase 1 | Pending |
+| QUAL-03 | Phase 1 | Pending |
+| QUAL-04 | Phase 1 | Pending |
+| QUAL-05 | Phase 1 | Pending |
+| STOR-01 | Phase 2 | Pending |
+| STOR-02 | Phase 2 | Pending |
+| STOR-03 | Phase 2 | Pending |
+| STOR-04 | Phase 2 | Pending |
+| SESS-01 | Phase 2 | Pending |
+| SESS-02 | Phase 2 | Pending |
+| SESS-03 | Phase 2 | Pending |
+| SESS-04 | Phase 2 | Pending |
+| META-01 | Phase 4 | Pending |
+| META-02 | Phase 4 | Pending |
+| META-03 | Phase 4 | Pending |
+| META-04 | Phase 4 | Pending |
+| META-05 | Phase 4 | Pending |
+| PIPE-01 | Phase 3 | Pending |
+| PIPE-02 | Phase 3 | Pending |
+| PIPE-03 | Phase 3 | Pending |
+| PIPE-04 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 27 new + 5 existing = 32 total
-- Mapped to phases: 5 (existing)
-- Unmapped: 27 ⚠️ (pending roadmap creation)
+- Mapped to phases: 32 (5 existing complete, 27 pending across phases 1-4)
+- Unmapped: 0
+
+**Phase Distribution:**
+- Phase 1: 12 requirements (EVNT-01 to EVNT-07, QUAL-01 to QUAL-05)
+- Phase 2: 8 requirements (STOR-01 to STOR-04, SESS-01 to SESS-04)
+- Phase 3: 4 requirements (PIPE-01 to PIPE-04)
+- Phase 4: 5 requirements (META-01 to META-05)
 
 ---
 *Requirements defined: 2026-02-12*
-*Last updated: 2026-02-12 after initial definition*
+*Last updated: 2026-02-12 after roadmap creation*
