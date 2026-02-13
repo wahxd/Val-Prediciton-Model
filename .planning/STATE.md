@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 6 of 10 (Valoscribe Adaptation) — IN PROGRESS
-Plan: 3 of 5 in phase (06-01, 06-03 complete)
+Plan: 3 of 5 in phase (06-01, 06-02, 06-03 complete)
 Status: In progress
-Last activity: 2026-02-13 — Completed 06-03-PLAN.md (output adapter module)
+Last activity: 2026-02-13 — Completed 06-02-PLAN.md (data extraction enhancements)
 
-Progress: [####░░░░░░] 32% (v1 Phase 1 + v2 Phase 5 complete + 06-01, 06-03 complete)
+Progress: [####░░░░░░] 33% (v1 Phase 1 + v2 Phase 5 complete + 06-01, 06-02, 06-03 complete)
 
 ## Previous Milestone (v1)
 
@@ -26,8 +26,8 @@ Progress: [####░░░░░░] 32% (v1 Phase 1 + v2 Phase 5 complete + 06-01
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: 3.5 min
+- Total plans completed: 11
+- Average duration: 3.4 min
 - Total execution time: 0.7 hours
 
 **By Phase:**
@@ -36,7 +36,7 @@ Progress: [####░░░░░░] 32% (v1 Phase 1 + v2 Phase 5 complete + 06-01
 |-------|-------|-------|----------|
 | 01-event-detection-foundation | 4 | 16 min | 4 min |
 | 05-data-pipeline-validation | 4 | 14 min | 3.5 min |
-| 06-valoscribe-adaptation | 2 | 13 min | 6.5 min |
+| 06-valoscribe-adaptation | 3 | 17 min | 5.7 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -66,6 +66,9 @@ Recent decisions affecting current work:
 - OutputAdapter uses default parameter pattern — No GameStateManager changes needed, works with existing code (06-03)
 - Output filenames standardized to events.jsonl/frames.csv — Matches Phase 5 loader expectations (06-03)
 - Unknown event types gracefully handled — Pass through all fields for future extensibility (06-03)
+- Buy phase detector requires 3/5 players with credit detections to classify loadout — Balances accuracy with OCR unreliability (06-02)
+- Timeout detector uses round_number crop region and de-duplicates via state tracking — Most reliable region for overlay text (06-02)
+- All round events include explicit side tracking — Uses RoundManager.get_current_sides() which handles halftime and OT swaps (06-02)
 
 ### Pending Todos
 
@@ -92,7 +95,7 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 06-03-PLAN.md (output adapter module)
+Stopped at: Completed 06-02-PLAN.md (data extraction enhancements)
 Resume file: None
 
 ---
