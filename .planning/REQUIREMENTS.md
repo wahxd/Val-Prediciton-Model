@@ -39,13 +39,13 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 
 ### Data Ingestion
 
-- [ ] **DATA-01**: Parse Valoscribe JSONL event logs into structured Python objects (Pydantic models)
-- [ ] **DATA-02**: Parse Valoscribe CSV frame states into pandas DataFrames
-- [ ] **DATA-03**: Parse Valoscribe match metadata JSON (teams, players, agents, maps, sides)
-- [ ] **DATA-04**: Index all available processed maps with metadata summary (team names, map, date, event count)
-- [ ] **DATA-05**: Score data quality per map (kill count vs expected, round progression consistency, round start/end balance)
-- [ ] **DATA-06**: Generate audit report identifying which maps are usable vs should be excluded
-- [ ] **DATA-07**: Configuration-based path to Valoscribe data directory (no data duplication into this repo)
+- [x] **DATA-01**: Parse Valoscribe JSONL event logs into structured Python objects (Pydantic models)
+- [x] **DATA-02**: Parse Valoscribe CSV frame states into pandas DataFrames
+- [x] **DATA-03**: Parse Valoscribe match metadata JSON (teams, players, agents, maps, sides)
+- [x] **DATA-04**: Index all available processed maps with metadata summary (team names, map, date, event count)
+- [x] **DATA-05**: Score data quality per map (kill count vs expected, round progression consistency, round start/end balance)
+- [x] **DATA-06**: Generate audit report identifying which maps are usable vs should be excluded
+- [x] **DATA-07**: Configuration-based path to Valoscribe data directory (no data duplication into this repo)
 
 ### Valoscribe Adaptation
 
@@ -147,13 +147,13 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 | QUAL-03 | v1 Phase 1 | Complete |
 | QUAL-04 | v1 Phase 1 | Complete |
 | QUAL-05 | v1 Phase 1 | Complete |
-| DATA-01 | Phase 5 | Pending |
-| DATA-02 | Phase 5 | Pending |
-| DATA-03 | Phase 5 | Pending |
-| DATA-04 | Phase 5 | Pending |
-| DATA-05 | Phase 5 | Pending |
-| DATA-06 | Phase 5 | Pending |
-| DATA-07 | Phase 5 | Pending |
+| DATA-01 | Phase 5 | Complete |
+| DATA-02 | Phase 5 | Complete |
+| DATA-03 | Phase 5 | Complete |
+| DATA-04 | Phase 5 | Complete |
+| DATA-05 | Phase 5 | Complete |
+| DATA-06 | Phase 5 | Complete |
+| DATA-07 | Phase 5 | Complete |
 | VSCR-01 | Phase 6 | Pending |
 | VSCR-02 | Phase 6 | Pending |
 | VSCR-03 | Phase 6 | Pending |
@@ -203,4 +203,4 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 
 ---
 *Requirements defined: 2026-02-13*
-*Last updated: 2026-02-13 after v2 roadmap restructure*
+*Last updated: 2026-02-13 — Phase 5 complete (DATA-01 through DATA-07)*

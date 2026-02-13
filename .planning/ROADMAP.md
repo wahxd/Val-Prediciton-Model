@@ -61,7 +61,7 @@ Phases 2-4 superseded by Valoscribe adoption. Valoscribe handles event storage, 
 
 **Key Insight:** VOD processing is the bottleneck (20-40 min per map). Valoscribe adaptation and dataset expansion are moved early so VOD processing runs in the background while feature engineering and modeling proceed on existing data.
 
-- [ ] **Phase 5: Data Pipeline & Validation** - Ingest Valoscribe output, understand full data format, quality scoring, audit
+- [x] **Phase 5: Data Pipeline & Validation** - Ingest Valoscribe output, understand full data format, quality scoring, audit
 - [ ] **Phase 6: Valoscribe Adaptation** - Port ReplayDetector, add output adapter for ALL possible data, validate on 71 maps
 - [ ] **Phase 7: Dataset Expansion (VOD Processing)** - Start processing additional VODs via modified Valoscribe (runs in background)
 - [ ] **Phase 8: Feature Engineering** - Transform raw events into predictive features at round, map, and match level
@@ -87,10 +87,10 @@ Phases 2-4 superseded by Valoscribe adoption. Valoscribe handles event storage, 
 **Plans:** 4 plans
 
 Plans:
-- [ ] 05-01-PLAN.md -- Foundation: Pydantic schemas, config, dependencies, test fixtures
-- [ ] 05-02-PLAN.md -- Data loader: map discovery, JSONL/CSV/metadata parsing, map index
-- [ ] 05-03-PLAN.md -- Quality scoring: 5 quality signals, tiered scoring, data catalog
-- [ ] 05-04-PLAN.md -- Audit reports (JSON + Markdown), CLI wrapper, integration run
+- [x] 05-01-PLAN.md -- Foundation: Pydantic schemas, config, dependencies, test fixtures
+- [x] 05-02-PLAN.md -- Data loader: map discovery, JSONL/CSV/metadata parsing, map index
+- [x] 05-03-PLAN.md -- Quality scoring: 5 quality signals, tiered scoring, data catalog
+- [x] 05-04-PLAN.md -- Audit reports (JSON + Markdown), CLI wrapper, integration run
 
 ### Phase 6: Valoscribe Adaptation
 **Goal**: Modify Valoscribe to output ALL possible extractable data (not just what the model might need), port the ReplayDetector for improved accuracy, and validate that output remains consistent on the original 71 maps
@@ -197,7 +197,7 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 | 2. Event Storage & Session Management | v1 | - | Shelved | - |
 | 3. Pipeline Integration | v1 | - | Shelved | - |
 | 4. Metadata Auto-Detection | v1 | - | Shelved | - |
-| 5. Data Pipeline & Validation | v2 | 0/4 | Planned | - |
+| 5. Data Pipeline & Validation | v2 | 4/4 | Complete | 2026-02-13 |
 | 6. Valoscribe Adaptation | v2 | 0/TBD | Not started | - |
 | 7. Dataset Expansion (VOD Processing) | v2 | 0/TBD | Not started | - |
 | 8. Feature Engineering | v2 | 0/TBD | Not started | - |
@@ -209,4 +209,5 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 *v2 phases added: 2026-02-13*
 *v2 phases restructured: 2026-02-13 (Valoscribe + VOD processing moved early)*
 *Phase 5 planned: 2026-02-13 (4 plans in 3 waves)*
+*Phase 5 complete: 2026-02-13 (4/4 plans, 5/5 must-haves verified, 44 tests)*
 *Last updated: 2026-02-13*
