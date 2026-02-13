@@ -2,19 +2,26 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-12)
+See: .planning/PROJECT.md (updated 2026-02-13)
 
-**Core value:** Reliable, timestamped event logs from live VCT matches — consistent enough across multiple matches to train a prediction model.
-**Current focus:** Phase 2 - Event Storage & Session Management
+**Core value:** A prediction model accurate enough to identify edge against Polymarket prices on VCT match outcomes.
+**Current focus:** Defining requirements for v2 Prediction Model milestone
 
 ## Current Position
 
-Phase: 2 of 4 (Event Storage & Session Management)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-13 — Phase 1 verified and complete (4/4 plans, 7/7 must-haves, 65 tests)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-13 — Milestone v2 started
 
-Progress: [██░░░░░░░░] 25%
+Progress: [░░░░░░░░░░] 0%
+
+## Previous Milestone (v1)
+
+**v1: Event Detection Foundation**
+- Phase 1 complete: 4/4 plans, 7/7 must-haves, 65 tests
+- Phases 2-4 shelved (Valoscribe adoption replaces custom storage/pipeline/metadata)
+- Phase 1 code preserved for future live stream retrofit
 
 ## Performance Metrics
 
@@ -29,10 +36,6 @@ Progress: [██░░░░░░░░] 25%
 |-------|-------|-------|----------|
 | 01-event-detection-foundation | 4 | 16 min | 4 min |
 
-**Recent Trend:**
-- Last 5 plans: 01-04 (4 min), 01-03 (4 min), 01-02 (3 min), 01-01 (5 min)
-- Trend: Stable
-
 *Updated after each plan completion*
 
 ## Accumulated Context
@@ -42,16 +45,11 @@ Progress: [██░░░░░░░░] 25%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Event-based logging (not continuous snapshots) — Only state changes matter for prediction, reduces noise and storage
-- Team-level granularity first — Simpler CV extraction, extensible to player-level later
-- VCT broadcasts only — Consistent overlay layout makes CV reliable
-- Auto-detect teams/map from broadcast — Reduces manual input friction, essential for consistent match labeling
-- Used kw_only=True on Pydantic dataclasses — Solves inheritance ordering issue, enforces explicit event construction
-- Transition-based round start detection — Timer must jump from <30s to >=80s + 5v5, prevents false positives
-- Timeout detection via 5-frame frozen timer — Conservative threshold avoids false positives from OCR flicker
-- Win condition inference priority — spike_detonate > spike_defuse > elimination > timeout
-- Integration tests use real component chain (not mocks) — Proves actual pipeline behavior end-to-end
-- pytest installed as test dependency — Required for test suite execution
+- Adopt Valoscribe for data, keep as separate repo — Consume its JSONL output, don't modify its code
+- Prediction scope: map winner + match winner — Binary outcomes matching Polymarket contracts
+- v2 = model only, v3 = trading + live — Ship model first, validate edge before building trading
+- Shelve v1 Phases 2-4 — Valoscribe provides storage/pipeline/metadata capabilities
+- Phase 1 code preserved — StateTracker, ReplayDetector useful for future live stream retrofit
 
 ### Pending Todos
 
@@ -59,21 +57,16 @@ None yet.
 
 ### Blockers/Concerns
 
-**Phase 1 Concerns:**
-- Replay detection must be robust from day one — single failure corrupts event logs with phantom events [ADDRESSED: ReplayDetector implemented with dual-condition detection]
-- Debouncing parameters (3-frame vs 5-frame consensus) need empirical tuning on actual VCT footage
-- OCR character whitelisting required to prevent garbage values (e.g., timer reading "1:3C" instead of "1:30") [ADDRESSED: OCR_WHITELISTS in ocr_config.py]
-- structlog dependency should be added to requirements.txt when project dependencies are formalized
-
-**General Concerns:**
-- VCT broadcast overlay format may have changed since Jan 2025 — ROI coordinates must be validated against live 2026 VCT match before production use
-- No validation that collected event data will actually improve prediction model accuracy — be ready to deprioritize low-value features based on model performance
+- Valoscribe's 71-map dataset may be insufficient for reliable model training — plan to expand by processing more VODs
+- Valoscribe's 87% validation rate means ~13% of maps may have data quality issues — need to handle or filter
+- Valoscribe's HUD config is for Champions 2025 — may not work for 2026 VCT broadcasts without config updates
+- No validation yet that Valoscribe's event data format is suitable for feature engineering — need to inspect actual output
 
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Phase 1 verified and complete
+Stopped at: Milestone v2 initialization
 Resume file: None
 
 ---
-*Next step: /gsd:discuss-phase 2 or /gsd:plan-phase 2*
+*Next step: Define requirements → create roadmap*
