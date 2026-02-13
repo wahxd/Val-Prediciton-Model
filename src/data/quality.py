@@ -242,13 +242,13 @@ def check_timing_consistency(events: list[ValoscribeEvent]) -> QualityCheck:
             rounds[event.round] = []
         rounds[event.round].append(event)
 
-    # Check within-round timestamp consistency
+    # Check within-round timestamp consistency (compare original order to timestamps)
     for rnd, round_events in rounds.items():
-        sorted_events = sorted(round_events, key=lambda e: e.timestamp)
-        for i in range(len(sorted_events) - 1):
-            if sorted_events[i + 1].timestamp < sorted_events[i].timestamp:
+        # Check if timestamps are monotonically increasing in original order
+        for i in range(len(round_events) - 1):
+            if round_events[i + 1].timestamp < round_events[i].timestamp:
                 timestamp_regressions += 1
-                issues.append(f"Timestamp regression in round {rnd}: {sorted_events[i].timestamp} -> {sorted_events[i + 1].timestamp}")
+                issues.append(f"Timestamp regression in round {rnd}: {round_events[i].timestamp} -> {round_events[i + 1].timestamp}")
 
     # Check round duration (time between consecutive round_start events)
     round_starts = sorted([e for e in events if e.type == "round_start"], key=lambda e: e.round)

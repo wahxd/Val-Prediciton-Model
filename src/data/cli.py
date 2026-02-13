@@ -33,7 +33,7 @@ def load(
     # Configure logging
     if verbose:
         structlog.configure(
-            wrapper_class=structlog.make_filtering_bound_logger(logging_level=10)
+            wrapper_class=structlog.make_filtering_bound_logger(min_level=10)
         )
 
     # Get config
@@ -101,7 +101,7 @@ def audit(
     # Configure logging
     if verbose:
         structlog.configure(
-            wrapper_class=structlog.make_filtering_bound_logger(logging_level=10)
+            wrapper_class=structlog.make_filtering_bound_logger(min_level=10)
         )
 
     # Get config
@@ -163,7 +163,7 @@ def catalog(
     # Configure logging
     if verbose:
         structlog.configure(
-            wrapper_class=structlog.make_filtering_bound_logger(logging_level=10)
+            wrapper_class=structlog.make_filtering_bound_logger(min_level=10)
         )
 
     # Get config

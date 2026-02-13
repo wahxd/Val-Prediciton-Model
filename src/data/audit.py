@@ -5,7 +5,7 @@ usability, and issues for all processed maps.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -44,7 +44,7 @@ def run_audit(load_results: dict[str, LoadResult]) -> AuditResult:
     Returns:
         AuditResult with all quality scores and catalog
     """
-    timestamp = datetime.utcnow().isoformat() + "Z"
+    timestamp = datetime.now(timezone.utc).isoformat()
     total_maps = len(load_results)
     maps_loaded = sum(1 for r in load_results.values() if r.success)
     maps_failed = total_maps - maps_loaded
