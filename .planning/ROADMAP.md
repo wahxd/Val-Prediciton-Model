@@ -1,23 +1,23 @@
-# Roadmap: Valorant Match Event Logger
+# Roadmap: Valorant Match Prediction Model
 
-## Overview
+## Milestones
 
-Transform the existing VCT frame analysis pipeline into a persistent event logging system. Starting with foundational state change detection and replay protection, then building event storage with match session management, integrating everything into a unified pipeline, and finally adding metadata auto-detection for team/map identification. By completion, the system will produce reliable, timestamped event logs from live VCT matches ready for prediction model training.
+- **v1 Event Detection** - Phases 1-4 (Phase 1 complete, Phases 2-4 shelved)
+- **v2 Prediction Model** - Phases 5-10 (in progress)
 
 ## Phases
+
+<details>
+<summary>v1 Event Detection (Phases 1-4) — Phase 1 complete, Phases 2-4 shelved</summary>
 
 **Phase Numbering:**
 - Integer phases (1, 2, 3, 4): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-Decimal phases appear between their surrounding integers in numeric order.
-
 - [x] **Phase 1: Event Detection Foundation** - Core state change detection with data quality validation
-- [ ] **Phase 2: Event Storage & Session Management** - Persistent JSONL event logs with match sessions
-- [ ] **Phase 3: Pipeline Integration** - Unified EventPipeline orchestrating full workflow
-- [ ] **Phase 4: Metadata Auto-Detection** - Auto-extract team names and map from broadcast overlay
-
-## Phase Details
+- [ ] ~~**Phase 2: Event Storage & Session Management**~~ - Shelved (Valoscribe adoption)
+- [ ] ~~**Phase 3: Pipeline Integration**~~ - Shelved (Valoscribe adoption)
+- [ ] ~~**Phase 4: Metadata Auto-Detection**~~ - Shelved (Valoscribe adoption)
 
 ### Phase 1: Event Detection Foundation
 **Goal**: Detect discrete game events (kills, round ends, spike events) from frame-by-frame state changes with robust replay detection and debouncing
@@ -43,58 +43,136 @@ Plans:
 - [x] 01-03-PLAN.md -- Event emitter and quality metrics (EventEmitter, QualityMetrics, structlog)
 - [x] 01-04-PLAN.md -- Unit tests for all Phase 1 components (pytest suite)
 
-### Phase 2: Event Storage & Session Management
-**Goal**: Store events as persistent, crash-safe JSONL logs organized by match sessions with metadata
+### Phase 2: Event Storage & Session Management — SHELVED
+### Phase 3: Pipeline Integration — SHELVED
+### Phase 4: Metadata Auto-Detection — SHELVED
 
-**Depends on**: Phase 1 (requires StateTracker and event detection logic)
+Phases 2-4 superseded by Valoscribe adoption. Valoscribe handles event storage, pipeline orchestration, and metadata extraction. See PROJECT.md Key Decisions.
 
-**Requirements**: STOR-01, STOR-02, STOR-03, STOR-04, SESS-01, SESS-02, SESS-03, SESS-04
+</details>
+
+## v2 Prediction Model
+
+**Milestone Goal:** Build and validate a prediction model for VCT map winner + match winner using Valoscribe's processed event data, with calibrated probabilities suitable for identifying edge against Polymarket prices.
+
+**Phase Numbering:**
+- Integer phases (5, 6, 7, 8, 9, 10): Planned milestone work
+- Decimal phases (7.1, 7.2): Urgent insertions if needed (marked with INSERTED)
+
+- [ ] **Phase 5: Data Pipeline & Validation** - Ingest Valoscribe output with quality scoring and audit
+- [ ] **Phase 6: Feature Engineering** - Transform raw events into predictive features at round, map, and match level
+- [ ] **Phase 7: Baseline Model & Evaluation** - Logistic regression baseline with walk-forward temporal validation
+- [ ] **Phase 8: Advanced Model & Series Prediction** - XGBoost with tuning plus BO3/BO5 series probability
+- [ ] **Phase 9: Valoscribe Adaptation** - Improve upstream data pipeline based on model feedback
+- [ ] **Phase 10: Dataset Expansion & Cross-Tournament Validation** - Expand beyond Champions 2025 and validate generalization
+
+## Phase Details
+
+### Phase 5: Data Pipeline & Validation
+**Goal**: Reliably ingest all Valoscribe output (JSONL events, CSV frames, JSON metadata) with per-map quality scoring that separates usable training data from maps that should be excluded
+
+**Depends on**: Nothing (first v2 phase; consumes Valoscribe output from external repo)
+
+**Requirements**: DATA-01, DATA-02, DATA-03, DATA-04, DATA-05, DATA-06, DATA-07
 
 **Success Criteria** (what must be TRUE):
-  1. Events are stored as timestamped JSONL files (one per match) with wall_clock_time, game_time, frame_number, and event type
-  2. Event logs survive stream interruptions and application crashes (flush after each event)
-  3. User can manually start/stop match sessions with unique match_id
-  4. Match sessions store metadata (teams, map, date, stream URL) in session header
-  5. System supports multi-map series (BO3/BO5) with per-map event logs linked to series
-  6. Event logs are organized in directory structure by date/match
+  1. Running the data loader on the Valoscribe data directory parses all 71 Champions 2025 maps into structured Python objects without errors
+  2. Every loaded map has a quality score based on kill count vs expected, round progression consistency, and round start/end balance
+  3. An audit report identifies which maps are usable for training and which should be excluded, with specific reasons for each exclusion
+  4. The Valoscribe data directory path is configurable (not hardcoded) and no match data is duplicated into this repo
+  5. A map index lists all available maps with metadata summary (teams, map name, date, event count, quality score)
 
 **Plans**: TBD
 
 Plans:
 - [ ] TBD (to be planned)
 
-### Phase 3: Pipeline Integration
-**Goal**: Integrate event detection and storage into existing GameWatcher with extensible event type system
+### Phase 6: Feature Engineering
+**Goal**: Transform Valoscribe event data into predictive features at three levels (round, map, match) with a feature registry that enables reproducible experiments
 
-**Depends on**: Phase 2 (requires EventStore and EventEmitter components)
+**Depends on**: Phase 5 (requires parsed event data and quality-filtered map set)
 
-**Requirements**: PIPE-01, PIPE-02, PIPE-03, PIPE-04
+**Requirements**: FEAT-01, FEAT-02, FEAT-03, FEAT-04, FEAT-05, FEAT-06, FEAT-07, FEAT-08
 
 **Success Criteria** (what must be TRUE):
-  1. EventPipeline orchestrates full workflow: frame capture -> state extraction -> state diffing -> event emission -> storage
-  2. GameWatcher uses EventPipeline instead of directly writing game_state.json
-  3. Pipeline handles stream reconnection without losing match session context
-  4. Adding new event types doesn't require modifying existing pipeline code (extensible registration system)
-  5. End-to-end test can process mock frames through full pipeline to verified JSONL output
+  1. Round-level features (score differential, alive differential, spike status, economy tier) are extractable from any loaded map's events
+  2. Economy is reconstructed per-round from round outcomes using Valorant's deterministic economy rules, and each team-round is classified into an economy tier (pistol/eco/half-buy/full-buy)
+  3. Map-level features aggregate round data into a single feature vector per map (final score, pistol round outcomes, first half score, win/loss streaks, first blood rate)
+  4. Match-level features aggregate map features for BO3/BO5 series prediction, and team Elo ratings are computed from historical VCT results
+  5. Named feature sets are defined in a feature registry (e.g., "baseline_5", "economy_extended") so experiments reference feature set names, not code
 
 **Plans**: TBD
 
 Plans:
 - [ ] TBD (to be planned)
 
-### Phase 4: Metadata Auto-Detection
-**Goal**: Auto-detect team names and map from broadcast overlay with confidence validation
+### Phase 7: Baseline Model & Evaluation
+**Goal**: Train a logistic regression baseline on real VCT data with walk-forward temporal validation, proving there is predictive signal and establishing the evaluation framework that all future models must pass
 
-**Depends on**: Phase 3 (requires working EventPipeline)
+**Depends on**: Phase 6 (requires feature engineering pipeline and at least the baseline feature set)
 
-**Requirements**: META-01, META-02, META-03, META-04, META-05
+**Requirements**: MODL-01, MODL-03, MODL-04, MODL-05, MODL-07, EVAL-01, EVAL-02, EVAL-03, EVAL-04, EVAL-05, EVAL-06, EVAL-07
 
 **Success Criteria** (what must be TRUE):
-  1. System auto-detects team names from broadcast overlay via OCR with majority-vote validation across first 10 frames
-  2. System auto-detects map name from broadcast overlay via OCR with majority-vote validation
-  3. Detected names are fuzzy-matched against known team/map whitelists for validation
-  4. System falls back to manual input prompt when auto-detection confidence is low
-  5. Session metadata is automatically populated with detected teams/map without manual intervention (when confidence is high)
+  1. A logistic regression model with L2 regularization achieves log loss below 0.693 (better than naive prior of always predicting 50%) on walk-forward temporal validation with chronological ordering
+  2. Evaluation uses leave-one-series-out cross-validation grouped by series_id (no maps from the same series appear in both train and test), and train/test splits never look forward in time
+  3. Calibration validation shows predicted probabilities are within +/-10% of observed frequencies on a reliability diagram, with Platt scaling applied post-training
+  4. SHAP feature importance analysis confirms the model learns game mechanics (economy, momentum, side advantage) rather than memorizing team identity
+  5. Evaluation reports (JSON metrics + matplotlib plots) are generated per experiment, covering log loss (primary), Brier score, calibration curve, and accuracy
+
+**Plans**: TBD
+
+Plans:
+- [ ] TBD (to be planned)
+
+### Phase 8: Advanced Model & Series Prediction
+**Goal**: Improve prediction quality with XGBoost gradient boosting and extend from map-level to series-level (BO3/BO5) win probability with separate calibration validation
+
+**Depends on**: Phase 7 (requires baseline model, evaluation framework, and calibration pipeline)
+
+**Requirements**: MODL-02, MODL-06, SERS-01, SERS-02, SERS-03
+
+**Success Criteria** (what must be TRUE):
+  1. An XGBoost model with regularization constraints (max_depth=4, min_child_weight tuned for n=71) is trained and compared against the logistic regression baseline on the same walk-forward validation
+  2. Hyperparameter tuning via Optuna Bayesian optimization finds a configuration that improves log loss over baseline (or confirms simpler model is sufficient)
+  3. BO3/BO5 series win probabilities are computed from per-map win probabilities using the combinatorial formula, incorporating map veto data where available
+  4. Series-level calibration is validated separately from map-level calibration, with its own reliability diagram
+
+**Plans**: TBD
+
+Plans:
+- [ ] TBD (to be planned)
+
+### Phase 9: Valoscribe Adaptation
+**Goal**: Improve the upstream Valoscribe pipeline based on what the model actually needs, increasing data quality above 87% validation rate and ensuring output format alignment
+
+**Depends on**: Phase 7 (requires SHAP/feature importance to know which outputs matter); can run in parallel with Phase 8
+
+**Requirements**: VSCR-01, VSCR-02, VSCR-03, VSCR-04
+
+**Success Criteria** (what must be TRUE):
+  1. SHAP analysis from Phase 7/8 has identified which Valoscribe outputs the model uses vs what is noise, and findings are documented
+  2. Valoscribe exports data in the exact format feature engineering expects via an output adapter (no manual format conversion needed)
+  3. ReplayDetector from Phase 1 is ported into Valoscribe's GameStateManager, and reprocessing the 71 Champions 2025 maps achieves a validation rate above 87%
+  4. The modified Valoscribe pipeline produces output consistent with the original 71 maps (no regressions in previously passing maps)
+
+**Plans**: TBD
+
+Plans:
+- [ ] TBD (to be planned)
+
+### Phase 10: Dataset Expansion & Cross-Tournament Validation
+**Goal**: Expand training data beyond Champions 2025 and validate that the model generalizes across tournaments, metas, and patches — the gate before trusting it for real money
+
+**Depends on**: Phase 8 (requires tuned model); Phase 9 (requires improved Valoscribe for processing new VODs)
+
+**Requirements**: EXPN-01, EXPN-02, EXPN-03, EXPN-04
+
+**Success Criteria** (what must be TRUE):
+  1. At least 30 additional VCT maps from a different tournament (not Champions 2025) are processed via the modified Valoscribe pipeline and pass quality validation
+  2. Cross-tournament validation (train on Champions 2025, test on new tournament) produces a measurable log loss and accuracy, establishing the generalization baseline
+  3. The model is retrained on the expanded dataset (100+ maps) and log loss improves compared to the Champions-only model
+  4. If cross-tournament accuracy drops more than 10 percentage points compared to within-tournament validation, the gap is flagged with specific investigation findings
 
 **Plans**: TBD
 
@@ -104,15 +182,23 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4
+Phases execute in numeric order: 5 -> 6 -> 7 -> 8 -> 9 -> 10
+(Phase 9 can run in parallel with Phase 8 after Phase 7 completes)
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Event Detection Foundation | 4/4 | ✓ Complete | 2026-02-13 |
-| 2. Event Storage & Session Management | 0/TBD | Not started | - |
-| 3. Pipeline Integration | 0/TBD | Not started | - |
-| 4. Metadata Auto-Detection | 0/TBD | Not started | - |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Event Detection Foundation | v1 | 4/4 | Complete | 2026-02-13 |
+| 2. Event Storage & Session Management | v1 | - | Shelved | - |
+| 3. Pipeline Integration | v1 | - | Shelved | - |
+| 4. Metadata Auto-Detection | v1 | - | Shelved | - |
+| 5. Data Pipeline & Validation | v2 | 0/TBD | Not started | - |
+| 6. Feature Engineering | v2 | 0/TBD | Not started | - |
+| 7. Baseline Model & Evaluation | v2 | 0/TBD | Not started | - |
+| 8. Advanced Model & Series Prediction | v2 | 0/TBD | Not started | - |
+| 9. Valoscribe Adaptation | v2 | 0/TBD | Not started | - |
+| 10. Dataset Expansion & Cross-Tournament Validation | v2 | 0/TBD | Not started | - |
 
 ---
-*Roadmap created: 2026-02-12*
-*Last updated: 2026-02-13 — Phase 1 complete*
+*Roadmap created: 2026-02-12 (v1)*
+*v2 phases added: 2026-02-13*
+*Last updated: 2026-02-13*

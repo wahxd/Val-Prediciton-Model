@@ -189,18 +189,18 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 | EXPN-04 | Phase 10 | Pending |
 
 **Coverage:**
-- v2 requirements: 39 total
-- Mapped to phases: 39
+- v2 requirements: 40 total
+- Mapped to phases: 40
 - Unmapped: 0
 
 **Phase Distribution:**
 - Phase 5: 7 requirements (DATA-01 to DATA-07)
 - Phase 6: 8 requirements (FEAT-01 to FEAT-08)
-- Phase 7: 13 requirements (MODL-01/03/04/05/07, EVAL-01 to EVAL-07)
-- Phase 8: 6 requirements (MODL-02/06, SERS-01 to SERS-03)
+- Phase 7: 12 requirements (MODL-01/03/04/05/07, EVAL-01 to EVAL-07)
+- Phase 8: 5 requirements (MODL-02/06, SERS-01 to SERS-03)
 - Phase 9: 4 requirements (VSCR-01 to VSCR-04)
 - Phase 10: 4 requirements (EXPN-01 to EXPN-04)
 
 ---
 *Requirements defined: 2026-02-13*
-*Last updated: 2026-02-13 after v2 milestone definition*
+*Last updated: 2026-02-13 after v2 roadmap creation*
