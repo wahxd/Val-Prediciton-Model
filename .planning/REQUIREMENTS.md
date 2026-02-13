@@ -1,9 +1,9 @@
-# Requirements: Valorant Match Event Logger
+# Requirements: Valorant Match Prediction Model
 
-**Defined:** 2026-02-12
-**Core Value:** Reliable, timestamped event logs from live VCT matches — consistent enough across multiple matches to train a prediction model.
+**Defined:** 2026-02-13
+**Core Value:** A prediction model accurate enough to identify edge against Polymarket prices on VCT match outcomes.
 
-## v1 Requirements
+## v1 Requirements (Previous Milestone)
 
 ### State Extraction (Existing)
 
@@ -13,79 +13,118 @@
 - [x] **EXTR-04**: Read round timer via OCR
 - [x] **EXTR-05**: Watch live Twitch/YouTube streams via streamlink at 6fps
 
-### Event Detection
+### Event Detection (Phase 1 — Complete)
 
 - [x] **EVNT-01**: Detect round end events when score increments between frames
 - [x] **EVNT-02**: Detect kill events when alive count decreases for either team
 - [x] **EVNT-03**: Detect spike plant events when spike status transitions to planted
-- [x] **EVNT-04**: Detect spike defuse events when spike status transitions from planted to not-planted without detonation
+- [x] **EVNT-04**: Detect spike defuse events when spike status transitions from planted to not-planted
 - [x] **EVNT-05**: Detect spike detonate events when spike status transitions to detonated
 - [x] **EVNT-06**: Detect round start events when timer resets and alive counts return to 5v5
-- [x] **EVNT-07**: State changes persist for 3+ consecutive frames before emitting event (debouncing)
+- [x] **EVNT-07**: State changes persist for 3+ consecutive frames before emitting event
 
-### Data Quality
+### Data Quality (Phase 1 — Complete)
 
-- [x] **QUAL-01**: Detect replay footage via timer regression (timer value increases instead of decreasing)
-- [x] **QUAL-02**: Validate alive count coherence (counts only decrease within a round, reset at round start)
-- [x] **QUAL-03**: Validate score monotonicity (score never decreases within a match half)
+- [x] **QUAL-01**: Detect replay footage via timer regression
+- [x] **QUAL-02**: Validate alive count coherence
+- [x] **QUAL-03**: Validate score monotonicity
 - [x] **QUAL-04**: Suppress all event emission during detected replay segments
-- [x] **QUAL-05**: Log data quality warnings when OCR confidence is low or values are out of expected range
+- [x] **QUAL-05**: Log data quality warnings when OCR confidence is low
 
-### Storage
+### v1 Phases 2-4 (Shelved)
 
-- [ ] **STOR-01**: Store events as timestamped append-only JSONL files (one per match)
-- [ ] **STOR-02**: Each event includes wall_clock_time, game_time (from timer OCR), frame_number, and event type
-- [ ] **STOR-03**: Event log survives stream interruptions and application crashes (flush after each event)
-- [ ] **STOR-04**: Match event logs stored in organized directory structure (by date/match)
-
-### Match Session
-
-- [ ] **SESS-01**: Create match session with unique match_id at session start
-- [ ] **SESS-02**: Store match metadata (teams, map, date, stream URL) in session header
-- [ ] **SESS-03**: Support manual start/stop of match sessions
-- [ ] **SESS-04**: Support multi-map series (BO3/BO5) with per-map event logs linked to series
-
-### Metadata Detection
-
-- [ ] **META-01**: Auto-detect team names from broadcast overlay via OCR
-- [ ] **META-02**: Auto-detect map name from broadcast overlay via OCR
-- [ ] **META-03**: Use majority-vote validation across first 10 frames for detection confidence
-- [ ] **META-04**: Fuzzy match detected names against known team/map whitelists
-- [ ] **META-05**: Fall back to manual input prompt when auto-detection confidence is low
-
-### Pipeline Integration
-
-- [ ] **PIPE-01**: Event pipeline orchestrates: frame capture → state extraction → state diffing → event emission → storage
-- [ ] **PIPE-02**: Refactor GameWatcher to use event pipeline instead of direct game_state.json writing
-- [ ] **PIPE-03**: Pipeline handles stream reconnection without losing match session context
-- [ ] **PIPE-04**: Extensible event type registration (adding new event types doesn't require modifying existing code)
+Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 through META-05, PIPE-01 through PIPE-04) — superseded by Valoscribe adoption. See PROJECT.md Key Decisions.
 
 ## v2 Requirements
 
-### Economy & Round Classification
+### Data Ingestion
 
-- **ECON-01**: Extract team economy during buy phase
-- **ECON-02**: Classify buy type (eco/force/full buy)
-- **ECON-03**: Detect side (attacker/defender)
-- **ECON-04**: Detect first blood per round
-- **ECON-05**: Classify round type (pistol vs gun round)
+- [ ] **DATA-01**: Parse Valoscribe JSONL event logs into structured Python objects (Pydantic models)
+- [ ] **DATA-02**: Parse Valoscribe CSV frame states into pandas DataFrames
+- [ ] **DATA-03**: Parse Valoscribe match metadata JSON (teams, players, agents, maps, sides)
+- [ ] **DATA-04**: Index all available processed maps with metadata summary (team names, map, date, event count)
+- [ ] **DATA-05**: Score data quality per map (kill count vs expected, round progression consistency, round start/end balance)
+- [ ] **DATA-06**: Generate audit report identifying which maps are usable vs should be excluded
+- [ ] **DATA-07**: Configuration-based path to Valoscribe data directory (no data duplication into this repo)
 
-### Advanced CV
+### Feature Engineering
 
-- **ADCV-01**: Detect agent compositions via template matching
-- **ADCV-02**: Track ultimate ability availability per team
+- [ ] **FEAT-01**: Extract round-level features from events (score differential, alive differential, spike status, economy tier)
+- [ ] **FEAT-02**: Reconstruct per-round economy from round outcomes using Valorant's deterministic economy rules (win/loss bonus escalation, kill rewards, spike plant bonus)
+- [ ] **FEAT-03**: Classify economy tier per team per round (pistol/eco/half-buy/full-buy) from reconstructed economy
+- [ ] **FEAT-04**: Aggregate round features into map-level features (final score, pistol round outcomes, first half score, win/loss streaks, first blood rate)
+- [ ] **FEAT-05**: Build team Elo ratings from VCT historical match results (scraped from VLR.gg or constructed from available data)
+- [ ] **FEAT-06**: Compute map-specific team win rates and starting side advantage per map
+- [ ] **FEAT-07**: Aggregate map features into match/series-level features for BO3/BO5 prediction
+- [ ] **FEAT-08**: Feature registry that defines named feature sets for experiments (e.g., "baseline_5", "economy_extended")
+
+### Model Training
+
+- [ ] **MODL-01**: Logistic regression baseline with L2 regularization and 3-5 features (Elo differential, map win rate, starting side, score differential, economy tier)
+- [ ] **MODL-02**: XGBoost gradient boosting model with regularization constraints (max_depth=4, min_child_weight tuned for n=71)
+- [ ] **MODL-03**: Configuration-driven model training (ModelConfig specifies model type, hyperparameters, feature set name)
+- [ ] **MODL-04**: Post-training probability calibration via Platt scaling (CalibratedClassifierCV)
+- [ ] **MODL-05**: Model serialization using XGBoost native JSON format (not joblib/pickle)
+- [ ] **MODL-06**: Hyperparameter tuning via Optuna Bayesian optimization for XGBoost
+- [ ] **MODL-07**: SHAP feature importance analysis to validate model learns game mechanics (economy, momentum) not just team identity
+
+### Evaluation
+
+- [ ] **EVAL-01**: Walk-forward temporal validation with chronological ordering (never random splits)
+- [ ] **EVAL-02**: Leave-one-series-out cross-validation grouped by series_id to prevent leakage
+- [ ] **EVAL-03**: Primary metric: log loss (calibrated probability quality)
+- [ ] **EVAL-04**: Secondary metrics: Brier score, calibration curve (reliability diagram), accuracy
+- [ ] **EVAL-05**: Baseline comparison: model must beat naive prior (log loss < 0.693) and "always pick higher-ranked team"
+- [ ] **EVAL-06**: Calibration validation: predicted probabilities within ±10% of observed frequencies on reliability diagram
+- [ ] **EVAL-07**: Generate evaluation reports (JSON metrics + matplotlib plots) per experiment
+
+### Series Prediction
+
+- [ ] **SERS-01**: Compute BO3/BO5 series win probability from per-map win probabilities using combinatorial formula
+- [ ] **SERS-02**: Incorporate map veto data (which team picked which map) into per-map predictions where available
+- [ ] **SERS-03**: Series-level calibration validation (separate from map-level)
+
+### Valoscribe Adaptation
+
+- [ ] **VSCR-01**: Identify which Valoscribe outputs the model actually uses vs what's noise (informed by SHAP/feature importance)
+- [ ] **VSCR-02**: Add output adapter to Valoscribe that exports data in the format feature engineering expects
+- [ ] **VSCR-03**: Port ReplayDetector into Valoscribe's GameStateManager to improve validation rate above 87%
+- [ ] **VSCR-04**: Validate modified Valoscribe pipeline produces consistent output on the original 71 Champions 2025 maps
+
+### Dataset Expansion
+
+- [ ] **EXPN-01**: Process 30-50 additional VCT maps from other tournaments via modified Valoscribe pipeline
+- [ ] **EXPN-02**: Cross-tournament validation: train on Champions 2025, test on new tournament data
+- [ ] **EXPN-03**: Retrain model on expanded dataset and measure improvement in log loss and calibration
+- [ ] **EXPN-04**: Assess cross-tournament generalization gap (if >10pp accuracy drop, flag for investigation)
+
+## v3 Requirements (Deferred)
+
+### Trading Infrastructure
+
+- **TRAD-01**: Kelly criterion position sizing from calibrated model probabilities
+- **TRAD-02**: Polymarket API integration for automated contract execution
+- **TRAD-03**: Market efficiency assessment (compare model calibration vs market calibration)
+- **TRAD-04**: Paper trading mode for validation before real money deployment
+
+### Live Stream Support
+
+- **LIVE-01**: Retrofit Valoscribe for live stream input via streamlink
+- **LIVE-02**: Real-time prediction updates during live VCT matches
+- **LIVE-03**: Crash-safe event storage for live sessions
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Player-level tracking | Not visible in broadcast without killfeed OCR — defer indefinitely |
-| Contract price integration (Polymarket/Kalshi) | Separate milestone — data collection first |
-| Prediction model training | Separate milestone — need data before model |
-| Non-VCT broadcast support | Different overlays add complexity without value yet |
-| Real-time trading signals | Future milestone after model is built |
-| VOD historical scraping | Overlay formats change seasonally, ROIs break |
-| Map positioning/minimap analysis | Minimap too small and inconsistently shown in broadcasts |
+| Deep learning / neural network models | 71 maps far too small; gradient boosting outperforms on tabular data at this scale |
+| Automated feature engineering (featuretools/tsfresh) | Domain features outperform automated approaches at n=71 |
+| MLflow / W&B experiment tracking | Overkill for single developer; local JSON experiment logs sufficient |
+| Player-level prediction features | Overfit on 71 maps; player skill captured by team Elo |
+| Per-agent win rate features | Meta shifts between patches; unstable signal |
+| Real-time trade execution | v3 milestone — model must be validated first |
+| Non-VCT tournament support | VCT-only for consistent data quality |
+| Cloud deployment | Local-first for this milestone |
 
 ## Traceability
 
@@ -96,47 +135,72 @@
 | EXTR-03 | Existing | Complete |
 | EXTR-04 | Existing | Complete |
 | EXTR-05 | Existing | Complete |
-| EVNT-01 | Phase 1 | Complete |
-| EVNT-02 | Phase 1 | Complete |
-| EVNT-03 | Phase 1 | Complete |
-| EVNT-04 | Phase 1 | Complete |
-| EVNT-05 | Phase 1 | Complete |
-| EVNT-06 | Phase 1 | Complete |
-| EVNT-07 | Phase 1 | Complete |
-| QUAL-01 | Phase 1 | Complete |
-| QUAL-02 | Phase 1 | Complete |
-| QUAL-03 | Phase 1 | Complete |
-| QUAL-04 | Phase 1 | Complete |
-| QUAL-05 | Phase 1 | Complete |
-| STOR-01 | Phase 2 | Pending |
-| STOR-02 | Phase 2 | Pending |
-| STOR-03 | Phase 2 | Pending |
-| STOR-04 | Phase 2 | Pending |
-| SESS-01 | Phase 2 | Pending |
-| SESS-02 | Phase 2 | Pending |
-| SESS-03 | Phase 2 | Pending |
-| SESS-04 | Phase 2 | Pending |
-| META-01 | Phase 4 | Pending |
-| META-02 | Phase 4 | Pending |
-| META-03 | Phase 4 | Pending |
-| META-04 | Phase 4 | Pending |
-| META-05 | Phase 4 | Pending |
-| PIPE-01 | Phase 3 | Pending |
-| PIPE-02 | Phase 3 | Pending |
-| PIPE-03 | Phase 3 | Pending |
-| PIPE-04 | Phase 3 | Pending |
+| EVNT-01 | v1 Phase 1 | Complete |
+| EVNT-02 | v1 Phase 1 | Complete |
+| EVNT-03 | v1 Phase 1 | Complete |
+| EVNT-04 | v1 Phase 1 | Complete |
+| EVNT-05 | v1 Phase 1 | Complete |
+| EVNT-06 | v1 Phase 1 | Complete |
+| EVNT-07 | v1 Phase 1 | Complete |
+| QUAL-01 | v1 Phase 1 | Complete |
+| QUAL-02 | v1 Phase 1 | Complete |
+| QUAL-03 | v1 Phase 1 | Complete |
+| QUAL-04 | v1 Phase 1 | Complete |
+| QUAL-05 | v1 Phase 1 | Complete |
+| DATA-01 | Phase 5 | Pending |
+| DATA-02 | Phase 5 | Pending |
+| DATA-03 | Phase 5 | Pending |
+| DATA-04 | Phase 5 | Pending |
+| DATA-05 | Phase 5 | Pending |
+| DATA-06 | Phase 5 | Pending |
+| DATA-07 | Phase 5 | Pending |
+| FEAT-01 | Phase 6 | Pending |
+| FEAT-02 | Phase 6 | Pending |
+| FEAT-03 | Phase 6 | Pending |
+| FEAT-04 | Phase 6 | Pending |
+| FEAT-05 | Phase 6 | Pending |
+| FEAT-06 | Phase 6 | Pending |
+| FEAT-07 | Phase 6 | Pending |
+| FEAT-08 | Phase 6 | Pending |
+| MODL-01 | Phase 7 | Pending |
+| MODL-02 | Phase 8 | Pending |
+| MODL-03 | Phase 7 | Pending |
+| MODL-04 | Phase 7 | Pending |
+| MODL-05 | Phase 7 | Pending |
+| MODL-06 | Phase 8 | Pending |
+| MODL-07 | Phase 7 | Pending |
+| EVAL-01 | Phase 7 | Pending |
+| EVAL-02 | Phase 7 | Pending |
+| EVAL-03 | Phase 7 | Pending |
+| EVAL-04 | Phase 7 | Pending |
+| EVAL-05 | Phase 7 | Pending |
+| EVAL-06 | Phase 7 | Pending |
+| EVAL-07 | Phase 7 | Pending |
+| SERS-01 | Phase 8 | Pending |
+| SERS-02 | Phase 8 | Pending |
+| SERS-03 | Phase 8 | Pending |
+| VSCR-01 | Phase 9 | Pending |
+| VSCR-02 | Phase 9 | Pending |
+| VSCR-03 | Phase 9 | Pending |
+| VSCR-04 | Phase 9 | Pending |
+| EXPN-01 | Phase 10 | Pending |
+| EXPN-02 | Phase 10 | Pending |
+| EXPN-03 | Phase 10 | Pending |
+| EXPN-04 | Phase 10 | Pending |
 
 **Coverage:**
-- v1 requirements: 27 new + 5 existing = 32 total
-- Mapped to phases: 32 (5 existing complete, 27 pending across phases 1-4)
+- v2 requirements: 39 total
+- Mapped to phases: 39
 - Unmapped: 0
 
 **Phase Distribution:**
-- Phase 1: 12 requirements (EVNT-01 to EVNT-07, QUAL-01 to QUAL-05)
-- Phase 2: 8 requirements (STOR-01 to STOR-04, SESS-01 to SESS-04)
-- Phase 3: 4 requirements (PIPE-01 to PIPE-04)
-- Phase 4: 5 requirements (META-01 to META-05)
+- Phase 5: 7 requirements (DATA-01 to DATA-07)
+- Phase 6: 8 requirements (FEAT-01 to FEAT-08)
+- Phase 7: 13 requirements (MODL-01/03/04/05/07, EVAL-01 to EVAL-07)
+- Phase 8: 6 requirements (MODL-02/06, SERS-01 to SERS-03)
+- Phase 9: 4 requirements (VSCR-01 to VSCR-04)
+- Phase 10: 4 requirements (EXPN-01 to EXPN-04)
 
 ---
-*Requirements defined: 2026-02-12*
-*Last updated: 2026-02-13 — Phase 1 requirements complete*
+*Requirements defined: 2026-02-13*
+*Last updated: 2026-02-13 after v2 milestone definition*
