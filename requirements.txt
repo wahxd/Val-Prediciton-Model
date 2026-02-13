@@ -6,3 +6,10 @@ streamlink
 scikit-learn
 pandas
 watchdog
+pydantic>=2.0
+pydantic-settings>=2.0
+pyarrow>=10.0
+typer>=0.12
+rich>=14.0
+structlog>=25.0
+python-dotenv>=1.0

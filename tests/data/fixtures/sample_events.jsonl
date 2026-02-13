@@ -1,0 +1,11 @@
+{"type": "round_start", "timestamp": 0.5, "round": 1}
+{"type": "kill", "timestamp": 15.3, "round": 1, "killer": "Player1", "victim": "Player6", "weapon": "Vandal", "killer_team": "Team_A", "victim_team": "Team_B", "headshot": true}
+{"type": "kill", "timestamp": 22.1, "round": 1, "killer": "Player2", "victim": "Player7", "weapon": "Phantom", "killer_team": "Team_A", "victim_team": "Team_B"}
+{"type": "spike_plant", "timestamp": 35.8, "round": 1, "planter": "Player3", "site": "A"}
+{"type": "kill", "timestamp": 42.5, "round": 1, "killer": "Player8", "victim": "Player3", "weapon": "Vandal", "killer_team": "Team_B", "victim_team": "Team_A"}
+{"type": "round_end", "timestamp": 52.0, "round": 1, "winning_team": "Team_B", "score_team1": 0, "score_team2": 1}
+{"type": "round_start", "timestamp": 65.0, "round": 2}
+{"type": "kill", "timestamp": 78.2, "round": 2, "killer": "Player4", "victim": "Player9", "weapon": "Sheriff", "killer_team": "Team_A", "victim_team": "Team_B"}
+{"type": "spike_defuse", "timestamp": 95.3, "round": 2, "defuser": "Player5"}
+{"type": "round_end", "timestamp": 100.0, "round": 2, "winning_team": "Team_A", "score_team1": 1, "score_team2": 1}
+{"type": "round_start", "timestamp": 115.0, "round": 3}

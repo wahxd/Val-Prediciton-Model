@@ -1,0 +1,6 @@
+timestamp,team1_alive,team2_alive,score_team1,score_team2,spike_status,timer
+0.5,5,5,0,0,not_planted,100
+15.3,5,4,0,0,not_planted,84
+35.8,4,3,0,0,planted,64
+42.5,3,3,0,0,planted,57
+52.0,0,3,0,1,exploded,0

@@ -1,0 +1,16 @@
+{
+  "map_id": "test_map_001",
+  "teams": ["Team_A", "Team_B"],
+  "map_name": "Ascent",
+  "date": "2025-01-15",
+  "agents": {
+    "Team_A": ["Jett", "Sova", "Omen", "Sage", "Killjoy"],
+    "Team_B": ["Raze", "Breach", "Brimstone", "Cypher", "Reyna"]
+  },
+  "validation_results": {
+    "status": "pass",
+    "issues": [],
+    "warnings": ["Minor timing inconsistency in round 5"]
+  },
+  "unexpected_field": "This field tests extra='allow' preservation"
+}
