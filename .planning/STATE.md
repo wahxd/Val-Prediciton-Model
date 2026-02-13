@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 6 of 10 (Valoscribe Adaptation) — IN PROGRESS
-Plan: 3 of 5 in phase (06-01, 06-02, 06-03 complete)
+Plan: 4 of 5 in phase (06-01, 06-02, 06-03, 06-04 complete)
 Status: In progress
-Last activity: 2026-02-13 — Completed 06-02-PLAN.md (data extraction enhancements)
+Last activity: 2026-02-13 — Completed 06-04-PLAN.md (schema documentation & parser updates)
 
-Progress: [####░░░░░░] 33% (v1 Phase 1 + v2 Phase 5 complete + 06-01, 06-02, 06-03 complete)
+Progress: [#####░░░░░] 40% (v1 Phase 1 + v2 Phase 5 complete + 06-01, 06-02, 06-03, 06-04 complete)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [####░░░░░░] 33% (v1 Phase 1 + v2 Phase 5 complete + 06-01
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
-- Average duration: 3.4 min
-- Total execution time: 0.7 hours
+- Total plans completed: 12
+- Average duration: 3.6 min
+- Total execution time: 0.9 hours
 
 **By Phase:**
 
@@ -36,7 +36,7 @@ Progress: [####░░░░░░] 33% (v1 Phase 1 + v2 Phase 5 complete + 06-01
 |-------|-------|-------|----------|
 | 01-event-detection-foundation | 4 | 16 min | 4 min |
 | 05-data-pipeline-validation | 4 | 14 min | 3.5 min |
-| 06-valoscribe-adaptation | 3 | 17 min | 5.7 min |
+| 06-valoscribe-adaptation | 4 | 20.3 min | 5.1 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -69,6 +69,9 @@ Recent decisions affecting current work:
 - Buy phase detector requires 3/5 players with credit detections to classify loadout — Balances accuracy with OCR unreliability (06-02)
 - Timeout detector uses round_number crop region and de-duplicates via state tracking — Most reliable region for overlay text (06-02)
 - All round events include explicit side tracking — Uses RoundManager.get_current_sides() which handles halftime and OT swaps (06-02)
+- Schema documentation lives in prediction model repo (consumer-side) — Per CONTEXT.md, docs/valoscribe-output-schema.md is single source of truth (06-04)
+- New fields on existing events use Optional defaults — Backward compatibility with Phase 5 loaders maintained (sides field on round events) (06-04)
+- Game mechanics reference centralized in schema doc — Economy, sides, round numbering documented with data formats for feature engineering context (06-04)
 
 ### Pending Todos
 
@@ -95,8 +98,8 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 06-02-PLAN.md (data extraction enhancements)
+Stopped at: Completed 06-04-PLAN.md (schema documentation & parser updates)
 Resume file: None
 
 ---
-*Next step: /gsd:execute-phase 6 --plan 04 or continue with remaining Phase 6 plans*
+*Next step: /gsd:execute-phase 6 --plan 05 (final plan in Phase 6)*
