@@ -9,3 +9,8 @@
 {"type": "spike_defuse", "timestamp": 95.3, "round": 2, "defuser": "Player5"}
 {"type": "round_end", "timestamp": 100.0, "round": 2, "winning_team": "Team_A", "score_team1": 1, "score_team2": 1}
 {"type": "round_start", "timestamp": 115.0, "round": 3}
+{"type": "buy_phase", "timestamp": 15.0, "round": 2, "team1_credits": 24000, "team2_credits": 3900, "team1_loadout_type": "full_buy", "team2_loadout_type": "eco"}
+{"type": "ult_usage", "timestamp": 85.5, "round": 3, "player": "player1", "agent": "Jett"}
+{"type": "timeout", "timestamp": 120.0, "round": 5, "team": "Team_A"}
+{"type": "round_start", "timestamp": 130.0, "round": 13, "sides": {"Team_A": "defense", "Team_B": "attack"}}
+{"type": "round_end", "timestamp": 180.0, "round": 13, "winning_team": "Team_A", "score_team1": 7, "score_team2": 6, "sides": {"Team_A": "defense", "Team_B": "attack"}}

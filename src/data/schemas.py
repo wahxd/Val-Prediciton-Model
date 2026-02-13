@@ -33,6 +33,7 @@ class RoundStartEvent(ValoscribeEvent):
     """Round start event."""
 
     type: Literal["round_start"]
+    sides: dict[str, str] | None = None  # Phase 6 addition: {"Team A": "attack", "Team B": "defense"}
 
 
 class RoundEndEvent(ValoscribeEvent):
@@ -42,6 +43,7 @@ class RoundEndEvent(ValoscribeEvent):
     winning_team: str
     score_team1: int
     score_team2: int
+    sides: dict[str, str] | None = None  # Phase 6 addition: side tracking
 
 
 class SpikePlantEvent(ValoscribeEvent):
@@ -54,6 +56,32 @@ class SpikeDefuseEvent(ValoscribeEvent):
     """Spike defuse event."""
 
     type: Literal["spike_defuse"]
+
+
+class BuyPhaseEvent(ValoscribeEvent):
+    """Buy phase loadout event (Phase 6 addition)."""
+
+    type: Literal["buy_phase"]
+    team1_credits: int | None = None
+    team2_credits: int | None = None
+    team1_loadout_type: str | None = None  # full_buy | half_buy | eco | force_buy | unknown
+    team2_loadout_type: str | None = None
+
+
+class UltUsageEvent(ValoscribeEvent):
+    """Ultimate usage event (Phase 6 addition)."""
+
+    type: Literal["ult_usage"]
+    player: str | None = None
+    player_index: int | None = None
+    agent: str | None = None
+
+
+class TimeoutEvent(ValoscribeEvent):
+    """Timeout event (Phase 6 addition)."""
+
+    type: Literal["timeout"]
+    team: str
 
 
 class MapMetadata(BaseModel):
@@ -75,6 +103,9 @@ EVENT_TYPE_MAP: dict[str, type[ValoscribeEvent]] = {
     "round_end": RoundEndEvent,
     "spike_plant": SpikePlantEvent,
     "spike_defuse": SpikeDefuseEvent,
+    "buy_phase": BuyPhaseEvent,
+    "ult_usage": UltUsageEvent,
+    "timeout": TimeoutEvent,
 }
 
 

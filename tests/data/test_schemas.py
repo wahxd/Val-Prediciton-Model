@@ -8,7 +8,11 @@ from pydantic import ValidationError
 from src.data.schemas import (
     ValoscribeEvent,
     KillEvent,
+    RoundStartEvent,
     RoundEndEvent,
+    BuyPhaseEvent,
+    UltUsageEvent,
+    TimeoutEvent,
     MapMetadata,
     parse_event,
     EVENT_TYPE_MAP,
@@ -152,8 +156,105 @@ def test_config_override(tmp_path):
 
 
 def test_event_type_map_completeness():
-    """Verify EVENT_TYPE_MAP contains all expected event types."""
-    expected_types = {"kill", "round_start", "round_end", "spike_plant", "spike_defuse"}
+    """Verify EVENT_TYPE_MAP contains at least core Phase 5 event types."""
+    core_types = {"kill", "round_start", "round_end", "spike_plant", "spike_defuse"}
+
+    # All core types must be present
+    assert core_types.issubset(set(EVENT_TYPE_MAP.keys()))
+    # Map has grown since Phase 5
+    assert len(EVENT_TYPE_MAP) >= 5
+
+
+def test_parse_buy_phase_event():
+    """Parse buy_phase event with economy and loadout data (Phase 6 addition)."""
+    buy_phase_json = '{"type": "buy_phase", "timestamp": 15.0, "round": 2, "team1_credits": 24000, "team2_credits": 3900, "team1_loadout_type": "full_buy", "team2_loadout_type": "eco"}'
+
+    event = parse_event(buy_phase_json)
+
+    assert isinstance(event, BuyPhaseEvent)
+    assert event.type == "buy_phase"
+    assert event.timestamp == 15.0
+    assert event.round == 2
+    assert event.team1_credits == 24000
+    assert event.team2_credits == 3900
+    assert event.team1_loadout_type == "full_buy"
+    assert event.team2_loadout_type == "eco"
+
+
+def test_parse_ult_usage_event():
+    """Parse ult_usage event (Phase 6 addition)."""
+    ult_usage_json = '{"type": "ult_usage", "timestamp": 85.5, "round": 3, "player": "player1", "agent": "Jett", "player_index": 2}'
+
+    event = parse_event(ult_usage_json)
+
+    assert isinstance(event, UltUsageEvent)
+    assert event.type == "ult_usage"
+    assert event.timestamp == 85.5
+    assert event.round == 3
+    assert event.player == "player1"
+    assert event.agent == "Jett"
+    assert event.player_index == 2
+
+
+def test_parse_timeout_event():
+    """Parse timeout event (Phase 6 addition)."""
+    timeout_json = '{"type": "timeout", "timestamp": 120.0, "round": 5, "team": "Team_A"}'
+
+    event = parse_event(timeout_json)
+
+    assert isinstance(event, TimeoutEvent)
+    assert event.type == "timeout"
+    assert event.timestamp == 120.0
+    assert event.round == 5
+    assert event.team == "Team_A"
+
+
+def test_parse_round_start_with_sides():
+    """Parse round_start event with sides field (Phase 6 addition)."""
+    round_start_json = '{"type": "round_start", "timestamp": 130.0, "round": 13, "sides": {"Team_A": "defense", "Team_B": "attack"}}'
+
+    event = parse_event(round_start_json)
+
+    assert isinstance(event, RoundStartEvent)
+    assert event.type == "round_start"
+    assert event.timestamp == 130.0
+    assert event.round == 13
+    assert event.sides == {"Team_A": "defense", "Team_B": "attack"}
+
+
+def test_parse_round_end_with_sides():
+    """Parse round_end event with sides field (Phase 6 addition)."""
+    round_end_json = '{"type": "round_end", "timestamp": 180.0, "round": 13, "winning_team": "Team_A", "score_team1": 7, "score_team2": 6, "sides": {"Team_A": "defense", "Team_B": "attack"}}'
+
+    event = parse_event(round_end_json)
+
+    assert isinstance(event, RoundEndEvent)
+    assert event.type == "round_end"
+    assert event.winning_team == "Team_A"
+    assert event.score_team1 == 7
+    assert event.score_team2 == 6
+    assert event.sides == {"Team_A": "defense", "Team_B": "attack"}
+
+
+def test_parse_round_start_without_sides():
+    """Parse round_start event without sides field (backward compatibility)."""
+    round_start_json = '{"type": "round_start", "timestamp": 0.5, "round": 1}'
+
+    event = parse_event(round_start_json)
+
+    assert isinstance(event, RoundStartEvent)
+    assert event.type == "round_start"
+    assert event.timestamp == 0.5
+    assert event.round == 1
+    assert event.sides is None  # Default None for backward compat
+
+
+def test_event_type_map_includes_new_types():
+    """Verify EVENT_TYPE_MAP includes Phase 6 additions."""
+    expected_types = {
+        "kill", "round_start", "round_end", "spike_plant", "spike_defuse",
+        "buy_phase", "ult_usage", "timeout"
+    }
 
     assert set(EVENT_TYPE_MAP.keys()) == expected_types
-    assert len(EVENT_TYPE_MAP) == 5
+    assert len(EVENT_TYPE_MAP) == 8
