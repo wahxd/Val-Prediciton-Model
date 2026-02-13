@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 ## Current Position
 
-Phase: 5 of 10 (Data Pipeline & Validation) — COMPLETE
-Plan: 4 of 4 in phase (all complete)
-Status: Phase complete, verified
-Last activity: 2026-02-13 — Phase 5 complete (4/4 plans, 5/5 must-haves, 44 tests)
+Phase: 6 of 10 (Valoscribe Adaptation) — IN PROGRESS
+Plan: 1 of 5 in phase (06-01 complete)
+Status: In progress
+Last activity: 2026-02-13 — Completed 06-01-PLAN.md (replay detection integration)
 
-Progress: [###░░░░░░░] 27% (v1 Phase 1 + v2 Phase 5 complete)
+Progress: [###░░░░░░░] 29% (v1 Phase 1 + v2 Phase 5 complete + 06-01 complete)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [###░░░░░░░] 27% (v1 Phase 1 + v2 Phase 5 complete)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 3.5 min
-- Total execution time: 0.5 hours
+- Total plans completed: 9
+- Average duration: 3.4 min
+- Total execution time: 0.6 hours
 
 **By Phase:**
 
@@ -36,6 +36,7 @@ Progress: [###░░░░░░░] 27% (v1 Phase 1 + v2 Phase 5 complete)
 |-------|-------|-------|----------|
 | 01-event-detection-foundation | 4 | 16 min | 4 min |
 | 05-data-pipeline-validation | 4 | 14 min | 3.5 min |
+| 06-valoscribe-adaptation | 1 | 5 min | 5 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -47,7 +48,7 @@ Progress: [###░░░░░░░] 27% (v1 Phase 1 + v2 Phase 5 complete)
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Adopt Valoscribe for data, keep as separate repo — Consume its JSONL output, don't modify its code
+- Adopt Valoscribe for data, actively develop alongside this repo — Phase 6 adapts Valoscribe to emit richer data (06-01: replay detection, economy, weapons, abilities)
 - Prediction scope: map winner + match winner — Binary outcomes matching Polymarket contracts
 - v2 = model only, v3 = trading + live — Ship model first, validate edge before building trading
 - Shelve v1 Phases 2-4 — Valoscribe provides storage/pipeline/metadata capabilities
@@ -59,12 +60,16 @@ Recent decisions affecting current work:
 - Config uses bare VALOSCRIBE_DATA_DIR env var — No prefix for simpler multi-developer setup (05-01)
 - Dual-format audit reports: JSON for programmatic consumption, Markdown for human dashboard (05-04)
 - Maps flagged for review, never auto-excluded — with 71 maps, human decides per-map (05-03)
+- ReplayDetector ported to Valoscribe as single source of truth — Eliminates duplication, Valoscribe is canonical (06-01)
+- Replay check integrated between phase detection and event generation — Detections run, events suppressed during replays (06-01)
+- CLAUDE.md updated: Valoscribe is actively developed — No longer read-only, Phase 6 contributions enabled (06-01)
 
 ### Pending Todos
 
-- Set up CLAUDE.md with project-specific content (from quick task 002 research)
+- ~~Set up CLAUDE.md with project-specific content (from quick task 002 research)~~ — DONE (06-01)
 - Update settings.local.json with expanded permissions + MCP servers (from quick task 002 research)
 - Run full audit when Valoscribe data becomes available (after Phase 7 VOD processing)
+- Decide on Valoscribe git workflow (merge feature branches? PR review? direct commits?) — Repo newly initialized in 06-01
 
 ### Quick Tasks Completed
 
@@ -79,12 +84,13 @@ Recent decisions affecting current work:
 - Single-tournament bias (Champions 2025 only) — cross-tournament validation in Phase 10
 - Elo ratings must be constructed from VCT historical results — no existing ratings available (Phase 8)
 - VOD processing bottleneck: 20-40 min per map — Phase 7 starts processing early, runs in background during Phases 8-9
+- ReplayDetector metrics not yet validated on real VODs — will assess impact during Phase 7 processing (06-01)
 
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Phase 5 complete, ready for Phase 6
+Stopped at: Completed 06-01-PLAN.md (replay detection integration)
 Resume file: None
 
 ---
-*Next step: /gsd:discuss-phase 6 or /gsd:plan-phase 6*
+*Next step: /gsd:execute-phase 6 --plan 02 or continue with remaining Phase 6 plans*
