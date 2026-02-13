@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-02-12)
 ## Current Position
 
 Phase: 1 of 4 (Event Detection Foundation)
-Plan: 3 of 4 in current phase
-Status: In progress
-Last activity: 2026-02-13 — Completed 01-03-PLAN.md (Event Emitter and Quality Metrics)
+Plan: 4 of 4 in current phase
+Status: Phase complete
+Last activity: 2026-02-13 — Completed 01-04-PLAN.md (Unit Tests)
 
-Progress: [███░░░░░░░] 19%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
+- Total plans completed: 4
 - Average duration: 4 min
-- Total execution time: 0.2 hours
+- Total execution time: 0.3 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-event-detection-foundation | 3 | 12 min | 4 min |
+| 01-event-detection-foundation | 4 | 16 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (4 min), 01-02 (3 min), 01-01 (5 min)
+- Last 5 plans: 01-04 (4 min), 01-03 (4 min), 01-02 (3 min), 01-01 (5 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -50,6 +50,8 @@ Recent decisions affecting current work:
 - Transition-based round start detection — Timer must jump from <30s to >=80s + 5v5, prevents false positives
 - Timeout detection via 5-frame frozen timer — Conservative threshold avoids false positives from OCR flicker
 - Win condition inference priority — spike_detonate > spike_defuse > elimination > timeout
+- Integration tests use real component chain (not mocks) — Proves actual pipeline behavior end-to-end
+- pytest installed as test dependency — Required for test suite execution
 
 ### Pending Todos
 
@@ -70,8 +72,8 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 01-03-PLAN.md (Event Emitter and Quality Metrics)
+Stopped at: Completed 01-04-PLAN.md (Unit Tests) - Phase 1 complete
 Resume file: None
 
 ---
-*Next step: Execute remaining Phase 1 plan (01-04: Unit tests)*
+*Next step: Plan Phase 2 (Event Storage & Session Management)*
