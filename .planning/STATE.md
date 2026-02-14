@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 10 of 10 (Advanced Model, Series Prediction & Retrain)
-Plan: 3 of 5 in phase (10-01, 10-02, 10-03 complete; 10-04, 10-05 remain)
+Plan: 4 of 5 in phase (10-01, 10-02, 10-03, 10-05 complete; 10-04 remains)
 Status: In progress
-Last activity: 2026-02-14 — Completed 10-03-PLAN.md (Thesis validation framework)
+Last activity: 2026-02-14 — Completed 10-05-PLAN.md (Cross-tournament validation & recency weighting)
 
-Progress: [##########==] 86% (v1 Phase 1 + v2 Phases 5-9 complete + Phase 10: 3/5 plans)
+Progress: [##########=-] 89% (v1 Phase 1 + v2 Phases 5-9 complete + Phase 10: 4/5 plans)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [##########==] 86% (v1 Phase 1 + v2 Phases 5-9 complete + Phase 10: 3/
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 24
-- Average duration: 9.3 min
-- Total execution time: 3.72 hours
+- Total plans completed: 25
+- Average duration: 9.4 min
+- Total execution time: 3.92 hours
 
 **By Phase:**
 
@@ -40,7 +40,7 @@ Progress: [##########==] 86% (v1 Phase 1 + v2 Phases 5-9 complete + Phase 10: 3/
 | 07-dataset-expansion | 3 | 133.9 min | 44.6 min |
 | 08-feature-engineering | 4 | 14.1 min | 3.5 min |
 | 09-baseline-model-evaluation | 3 | 13 min | 4.3 min |
-| 10-advanced-model-series-retrain | 3 | 11 min | 3.7 min |
+| 10-advanced-model-series-retrain | 4 | 14.2 min | 3.5 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -128,6 +128,10 @@ Recent decisions affecting current work:
 - Meta shift detected when cross-tournament top-10 overlap < 70% — Per CONTEXT, signals feature importance instability across tournaments (10-03)
 - Stable features appear in top-N across ALL tournaments — Trustworthy for betting edge, signal persists across metas (10-03)
 - Unstable features appear in SOME but not ALL tournaments — Signal may expire, recommend retraining when meta shifts (10-03)
+- Leave-one-tournament-out CV is DIAGNOSTIC only — Not primary validation; mixed temporal training (pool all tournaments by date, walk-forward) is DEFAULT (10-05)
+- Tournament-level recency weights: 1.0, 0.7, 0.5, 0.3 for ≤5 tournaments — Meta shifts happen at tournament boundaries, exponential decay for >5 (10-05)
+- Three training strategies compared: Champions-only (first tournament only), mixed (all equal), recency-weighted (sample_weight) (10-05)
+- Cross-tournament investigation report when >10pp accuracy drop — 4 sections: statistical check, feature shift, thesis validation, trading implication (10-05)
 
 ### Pending Todos
 
@@ -155,8 +159,8 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 10-03-PLAN.md (Thesis validation framework)
+Stopped at: Completed 10-05-PLAN.md (Cross-tournament validation & recency weighting)
 Resume file: None
 
 ---
-*Next step: Phase 10 Plans 10-04, 10-05 — Hyperparameter tuning (Optuna + GridSearchCV), cross-tournament validation & retrain*
+*Next step: Phase 10 Plan 10-04 — Hyperparameter tuning (Optuna for XGBoost, GridSearchCV for logistic regression)*
