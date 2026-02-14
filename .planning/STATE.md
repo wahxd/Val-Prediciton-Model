@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 8 of 10 (Feature Engineering)
-Plan: 1 of 4 in phase (08-01 complete)
+Plan: 2 of 4 in phase (08-01, 08-02 complete)
 Status: In progress
-Last activity: 2026-02-14 — Completed 08-01-PLAN.md (Economy reconstruction)
+Last activity: 2026-02-14 — Completed 08-02-PLAN.md (Round features & combat extractors)
 
-Progress: [#######░░░] 56% (v1 Phase 1 + v2 Phases 5-7 + Phase 8 Plan 1 complete)
+Progress: [#######░░░] 59% (v1 Phase 1 + v2 Phases 5-7 + Phase 8 Plans 1-2 complete)
 
 ## Previous Milestone (v1)
 
@@ -90,6 +90,11 @@ Recent decisions affecting current work:
 - Economy tier thresholds: eco (0-2500), light_buy (2500-3500), half_buy (3500-3900), full_buy (3900+) — Based on Valorant buy costs and strategic value (08-01)
 - Economy credit tracking is approximate — Goal is tier classification, not exact values; uses spending estimates per tier (08-01)
 - TDD workflow for feature modules — RED (failing tests) → GREEN (implementation) → atomic commits pattern established (08-01)
+- Round features handle missing sides field gracefully — Pre-Phase 6 data lacks sides tracking, infer from round number (08-02)
+- Clutch detection uses single-player kill pattern — High-precision for 1vX scenarios without needing frame-based alive tracking (08-02)
+- Multi-kills detected within 10-second window — Standard Valorant multi-kill timing convention (08-02)
+- Anti-eco stats gracefully degrade without economy data — Returns zeros when Plan 01 data unavailable, full functionality when present (08-02)
+- Side performance infers sides from round number when missing — R1-12 initial, R13-24 swapped, OT alternates (backward compatibility) (08-02)
 
 ### Pending Todos
 
@@ -117,7 +122,7 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 08-01-PLAN.md (Economy reconstruction)
+Stopped at: Completed 08-02-PLAN.md (Round features & combat extractors)
 Resume file: None
 
 ---
