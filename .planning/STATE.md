@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 8 of 10 (Feature Engineering)
-Plan: 3 of 4 in phase (08-01, 08-02, 08-03 complete)
-Status: In progress
-Last activity: 2026-02-14 — Completed 08-03-PLAN.md (Map features & feature registry)
+Plan: 4 of 4 in phase (08-01, 08-02, 08-03, 08-04 complete)
+Status: Phase complete
+Last activity: 2026-02-14 — Completed 08-04-PLAN.md (Match features & pipeline)
 
-Progress: [#######░░░] 63% (v1 Phase 1 + v2 Phases 5-7 + Phase 8 Plans 1-3 complete)
+Progress: [########░░] 67% (v1 Phase 1 + v2 Phases 5-8 complete)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [#######░░░] 63% (v1 Phase 1 + v2 Phases 5-7 + Phase 8 Plans 1-3
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
-- Average duration: 11.7 min
-- Total execution time: 3.31 hours
+- Total plans completed: 18
+- Average duration: 11.4 min
+- Total execution time: 3.39 hours
 
 **By Phase:**
 
@@ -38,7 +38,7 @@ Progress: [#######░░░] 63% (v1 Phase 1 + v2 Phases 5-7 + Phase 8 Plans 1-3
 | 05-data-pipeline-validation | 4 | 14 min | 3.5 min |
 | 06-valoscribe-adaptation | 4 | 20.3 min | 5.1 min |
 | 07-dataset-expansion | 3 | 133.9 min | 44.6 min |
-| 08-feature-engineering | 3 | 9.5 min | 3.2 min |
+| 08-feature-engineering | 4 | 14.1 min | 3.5 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -99,6 +99,10 @@ Recent decisions affecting current work:
 - All features from team1 perspective — Team2 features are inverse/complement, team order matters for consistency (08-03)
 - Feature sets support composable inheritance — Enables experiment reproducibility and gradual feature addition (core → combat → economy) (08-03)
 - Missing map data returns None values — Graceful degradation when economy/combat data unavailable, allows partial feature sets (08-03)
+- Match features aggregate per-map features for series prediction — BO3/BO5 outcomes depend on series momentum, not just individual map performance (08-04)
+- Pipeline produces pandas DataFrame output — Standard format for scikit-learn model training (08-04)
+- Feature set filtering at pipeline level — Registry enforces reproducible experiments, prevents feature leakage (08-04)
+- Graceful error handling skips bad maps — Continue processing with valid maps rather than fail entire batch (08-04)
 
 ### Pending Todos
 
@@ -126,8 +130,8 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 08-03-PLAN.md (Map features & feature registry)
+Stopped at: Completed 08-04-PLAN.md (Match features & pipeline)
 Resume file: None
 
 ---
-*Next step: Continue Phase 8 (remaining plan: 04-elo-ratings)*
+*Next step: Phase 9 (Baseline Model) — Feature engineering complete, ready for model training*
