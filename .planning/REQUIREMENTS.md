@@ -93,7 +93,7 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 
 ### Dataset Expansion
 
-- [ ] **EXPN-01**: Process 30-50 additional VCT maps from other tournaments via modified Valoscribe pipeline
+- [x] **EXPN-01**: Process 30-50 additional VCT maps from other tournaments via modified Valoscribe pipeline
 - [ ] **EXPN-02**: Cross-tournament validation: train on Champions 2025, test on new tournament data
 - [ ] **EXPN-03**: Retrain model on expanded dataset and measure improvement in log loss and calibration
 - [ ] **EXPN-04**: Assess cross-tournament generalization gap (if >10pp accuracy drop, flag for investigation)
@@ -183,7 +183,7 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 | SERS-01 | Phase 10 | Pending |
 | SERS-02 | Phase 10 | Pending |
 | SERS-03 | Phase 10 | Pending |
-| EXPN-01 | Phase 7 | Pending |
+| EXPN-01 | Phase 7 | Complete |
 | EXPN-02 | Phase 10 | Pending |
 | EXPN-03 | Phase 10 | Pending |
 | EXPN-04 | Phase 10 | Pending |
@@ -203,4 +203,4 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 
 ---
 *Requirements defined: 2026-02-13*
-*Last updated: 2026-02-13 — Phase 5 complete (DATA-01 through DATA-07)*
+*Last updated: 2026-02-14 — Phase 7 complete (EXPN-01)*
