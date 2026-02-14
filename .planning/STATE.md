@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 7 of 10 (Dataset Expansion) — IN PROGRESS
-Plan: 2 of 5 in phase (07-01, 07-02 complete)
+Plan: 3 of 5 in phase (07-01, 07-02, 07-03 complete)
 Status: In progress
-Last activity: 2026-02-13 — Completed 07-02-PLAN.md (Valoscribe orchestration)
+Last activity: 2026-02-14 — Completed 07-03-PLAN.md (VOD processing execution)
 
-Progress: [#####░░░░░] 43% (v1 Phase 1 + v2 Phase 5-6 complete + 07-01, 07-02 complete)
+Progress: [#####░░░░░] 46% (v1 Phase 1 + v2 Phase 5-6 complete + 07-01, 07-02, 07-03 complete)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [#####░░░░░] 43% (v1 Phase 1 + v2 Phase 5-6 complete + 07-01
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
-- Average duration: 3.7 min
-- Total execution time: 1.04 hours
+- Total plans completed: 15
+- Average duration: 12.6 min
+- Total execution time: 3.15 hours
 
 **By Phase:**
 
@@ -37,7 +37,7 @@ Progress: [#####░░░░░] 43% (v1 Phase 1 + v2 Phase 5-6 complete + 07-01
 | 01-event-detection-foundation | 4 | 16 min | 4 min |
 | 05-data-pipeline-validation | 4 | 14 min | 3.5 min |
 | 06-valoscribe-adaptation | 4 | 20.3 min | 5.1 min |
-| 07-dataset-expansion | 2 | 7.9 min | 4.0 min |
+| 07-dataset-expansion | 3 | 133.9 min | 44.6 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -82,6 +82,10 @@ Recent decisions affecting current work:
 - VOD files deleted after successful processing — Default True, saves disk space during multi-day processing runs (07-02)
 - CLI scripts use stdlib argparse — No typer/click dependency, simpler for standalone scripts (07-02)
 - Progress monitoring includes ETA calculation — Average processing time × pending count for user planning (07-02)
+- VLR.gg scraping verified against live pages — Selectors work correctly on real tournament pages (07-03)
+- 46 VODs queued from two major tournaments — Masters Bangkok 2024 + VCT Americas 2024 Stage 1 for temporal diversity (07-03)
+- Windows console encoding fixed for UTF-8 team names — sys.stdout.reconfigure + PYTHONIOENCODING (07-03)
+- Processing remains manual start for user control — VOD processing takes 15-20 hours, user decides when to start (07-03)
 
 ### Pending Todos
 
@@ -98,20 +102,19 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Valoscribe data directory not yet populated — full audit run deferred to after Phase 7 VOD processing
-- Valoscribe's 71-map dataset may be insufficient for reliable model training — VOD processing moved to Phase 7
-- Single-tournament bias (Champions 2025 only) — cross-tournament validation in Phase 10
+- Valoscribe data directory not yet populated — 46 VODs queued, processing awaits user start (07-03)
+- Valoscribe's 71-map dataset will expand to 117+ maps — 46 VODs queued from Masters Bangkok + VCT Americas (07-03)
+- Single-tournament bias (Champions 2025 only) — mitigated by adding Masters Bangkok + VCT Americas data (07-03)
 - Elo ratings must be constructed from VCT historical results — no existing ratings available (Phase 8)
-- VOD processing bottleneck: 20-40 min per map — Phase 7 starts processing early, runs in background during Phases 8-9
+- VOD processing bottleneck: 15-20 hours for 46 maps — Phase 7 processing can run in background during Phases 8-9 (07-03)
 - ReplayDetector metrics not yet validated on real VODs — will assess impact during Phase 7 processing (06-01)
-- VLR.gg HTML selectors based on fixture testing — may need adjustment for live pages in 07-02 (07-01)
 - Pagination not yet handled in event scraper — may miss matches if VLR.gg paginates results (07-01)
 
 ## Session Continuity
 
-Last session: 2026-02-13
-Stopped at: Completed 07-02-PLAN.md (Valoscribe orchestration)
+Last session: 2026-02-14
+Stopped at: Completed 07-03-PLAN.md (VOD processing execution - 46 VODs queued)
 Resume file: None
 
 ---
-*Next step: /gsd:execute-phase 7 --plan 03 (VOD processing execution)*
+*Next step: Start VOD processing with `python scripts/expand_dataset.py --process-only`, then proceed with Phase 8 (Feature Engineering) while processing runs in background*
