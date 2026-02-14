@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 ## Current Position
 
-Phase: 6 of 10 (Valoscribe Adaptation) — IN PROGRESS
-Plan: 4 of 5 in phase (06-01, 06-02, 06-03, 06-04 complete)
+Phase: 7 of 10 (Dataset Expansion) — IN PROGRESS
+Plan: 1 of 5 in phase (07-01 complete)
 Status: In progress
-Last activity: 2026-02-13 — Completed 06-04-PLAN.md (schema documentation & parser updates)
+Last activity: 2026-02-13 — Completed 07-01-PLAN.md (VLR discovery & manifest)
 
-Progress: [#####░░░░░] 40% (v1 Phase 1 + v2 Phase 5 complete + 06-01, 06-02, 06-03, 06-04 complete)
+Progress: [#####░░░░░] 42% (v1 Phase 1 + v2 Phase 5-6 complete + 07-01 complete)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [#####░░░░░] 40% (v1 Phase 1 + v2 Phase 5 complete + 06-01, 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
-- Average duration: 3.6 min
-- Total execution time: 0.9 hours
+- Total plans completed: 13
+- Average duration: 3.7 min
+- Total execution time: 0.97 hours
 
 **By Phase:**
 
@@ -37,6 +37,7 @@ Progress: [#####░░░░░] 40% (v1 Phase 1 + v2 Phase 5 complete + 06-01, 
 | 01-event-detection-foundation | 4 | 16 min | 4 min |
 | 05-data-pipeline-validation | 4 | 14 min | 3.5 min |
 | 06-valoscribe-adaptation | 4 | 20.3 min | 5.1 min |
+| 07-dataset-expansion | 1 | 3.8 min | 3.8 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -72,6 +73,10 @@ Recent decisions affecting current work:
 - Schema documentation lives in prediction model repo (consumer-side) — Per CONTEXT.md, docs/valoscribe-output-schema.md is single source of truth (06-04)
 - New fields on existing events use Optional defaults — Backward compatibility with Phase 5 loaders maintained (sides field on round events) (06-04)
 - Game mechanics reference centralized in schema doc — Economy, sides, round numbering documented with data formats for feature engineering context (06-04)
+- Atomic JSON writes use temp-file-then-rename pattern — Prevents manifest corruption on crash, Windows-safe (07-01)
+- VOD discovery is idempotent — Re-running scraper on same event adds only new VODs, safe for incremental updates (07-01)
+- Rate limiting defaults to 1.5s between requests — Polite scraping prevents VLR.gg rate limiting (07-01)
+- Maps without VOD URLs are skipped automatically — Reduces processing queue to only actionable VODs (07-01)
 
 ### Pending Todos
 
@@ -94,12 +99,14 @@ Recent decisions affecting current work:
 - Elo ratings must be constructed from VCT historical results — no existing ratings available (Phase 8)
 - VOD processing bottleneck: 20-40 min per map — Phase 7 starts processing early, runs in background during Phases 8-9
 - ReplayDetector metrics not yet validated on real VODs — will assess impact during Phase 7 processing (06-01)
+- VLR.gg HTML selectors based on fixture testing — may need adjustment for live pages in 07-02 (07-01)
+- Pagination not yet handled in event scraper — may miss matches if VLR.gg paginates results (07-01)
 
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 06-04-PLAN.md (schema documentation & parser updates)
+Stopped at: Completed 07-01-PLAN.md (VLR discovery & manifest)
 Resume file: None
 
 ---
-*Next step: /gsd:execute-phase 6 --plan 05 (final plan in Phase 6)*
+*Next step: /gsd:execute-phase 7 --plan 02 (Valoscribe sys.path setup + discovery orchestration)*
