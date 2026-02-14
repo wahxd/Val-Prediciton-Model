@@ -174,7 +174,7 @@ Examples:
             print("[DRY RUN] Would discover VODs and add to manifest")
         else:
             new_vods = orchestrator.scrape_and_populate(args.event_url, tournament_name)
-            print(f"✓ Discovered {new_vods} new VODs")
+            print(f"[OK] Discovered {new_vods} new VODs")
             print()
 
     # Step 2: Processing (if not --discover-only)

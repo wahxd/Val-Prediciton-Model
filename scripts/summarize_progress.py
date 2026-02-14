@@ -131,7 +131,7 @@ def main():
         progress_pct = (complete / total) * 100
         bar_width = 50
         filled = int(bar_width * complete / total)
-        bar = '█' * filled + '░' * (bar_width - filled)
+        bar = '#' * filled + '-' * (bar_width - filled)
         print(f"Progress: [{bar}] {progress_pct:.1f}% ({complete}/{total})")
         print()
 
