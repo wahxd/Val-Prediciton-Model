@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 8 of 10 (Feature Engineering)
-Plan: 2 of 4 in phase (08-01, 08-02 complete)
+Plan: 3 of 4 in phase (08-01, 08-02, 08-03 complete)
 Status: In progress
-Last activity: 2026-02-14 — Completed 08-02-PLAN.md (Round features & combat extractors)
+Last activity: 2026-02-14 — Completed 08-03-PLAN.md (Map features & feature registry)
 
-Progress: [#######░░░] 59% (v1 Phase 1 + v2 Phases 5-7 + Phase 8 Plans 1-2 complete)
+Progress: [#######░░░] 63% (v1 Phase 1 + v2 Phases 5-7 + Phase 8 Plans 1-3 complete)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [#######░░░] 59% (v1 Phase 1 + v2 Phases 5-7 + Phase 8 Plans 1-2
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
-- Average duration: 12.3 min
-- Total execution time: 3.24 hours
+- Total plans completed: 17
+- Average duration: 11.7 min
+- Total execution time: 3.31 hours
 
 **By Phase:**
 
@@ -38,7 +38,7 @@ Progress: [#######░░░] 59% (v1 Phase 1 + v2 Phases 5-7 + Phase 8 Plans 1-2
 | 05-data-pipeline-validation | 4 | 14 min | 3.5 min |
 | 06-valoscribe-adaptation | 4 | 20.3 min | 5.1 min |
 | 07-dataset-expansion | 3 | 133.9 min | 44.6 min |
-| 08-feature-engineering | 1 | 5.3 min | 5.3 min |
+| 08-feature-engineering | 3 | 9.5 min | 3.2 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -95,6 +95,10 @@ Recent decisions affecting current work:
 - Multi-kills detected within 10-second window — Standard Valorant multi-kill timing convention (08-02)
 - Anti-eco stats gracefully degrade without economy data — Returns zeros when Plan 01 data unavailable, full functionality when present (08-02)
 - Side performance infers sides from round number when missing — R1-12 initial, R13-24 swapped, OT alternates (backward compatibility) (08-02)
+- No team identity features in map vectors — LOCKED decision: purely game mechanics, no team names/IDs (08-03)
+- All features from team1 perspective — Team2 features are inverse/complement, team order matters for consistency (08-03)
+- Feature sets support composable inheritance — Enables experiment reproducibility and gradual feature addition (core → combat → economy) (08-03)
+- Missing map data returns None values — Graceful degradation when economy/combat data unavailable, allows partial feature sets (08-03)
 
 ### Pending Todos
 
@@ -122,8 +126,8 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 08-02-PLAN.md (Round features & combat extractors)
+Stopped at: Completed 08-03-PLAN.md (Map features & feature registry)
 Resume file: None
 
 ---
-*Next step: Continue Phase 8 (remaining plans: 02-round-features, 03-match-features, 04-elo-ratings)*
+*Next step: Continue Phase 8 (remaining plan: 04-elo-ratings)*
