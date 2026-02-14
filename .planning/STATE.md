@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 10 of 10 (Advanced Model, Series Prediction & Retrain)
-Plan: 2 of 5 in phase (10-01, 10-02 complete; 10-03, 10-04, 10-05 remain)
+Plan: 3 of 5 in phase (10-01, 10-02, 10-03 complete; 10-04, 10-05 remain)
 Status: In progress
-Last activity: 2026-02-14 — Completed 10-02-PLAN.md (BO3/BO5 series prediction with momentum)
+Last activity: 2026-02-14 — Completed 10-03-PLAN.md (Thesis validation framework)
 
-Progress: [##########==] 83% (v1 Phase 1 + v2 Phases 5-9 complete + Phase 10: 2/5 plans)
+Progress: [##########==] 86% (v1 Phase 1 + v2 Phases 5-9 complete + Phase 10: 3/5 plans)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [##########==] 83% (v1 Phase 1 + v2 Phases 5-9 complete + Phase 10: 2/
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 23
-- Average duration: 9.7 min
-- Total execution time: 3.67 hours
+- Total plans completed: 24
+- Average duration: 9.3 min
+- Total execution time: 3.72 hours
 
 **By Phase:**
 
@@ -40,7 +40,7 @@ Progress: [##########==] 83% (v1 Phase 1 + v2 Phases 5-9 complete + Phase 10: 2/
 | 07-dataset-expansion | 3 | 133.9 min | 44.6 min |
 | 08-feature-engineering | 4 | 14.1 min | 3.5 min |
 | 09-baseline-model-evaluation | 3 | 13 min | 4.3 min |
-| 10-advanced-model-series-retrain | 2 | 8 min | 4 min |
+| 10-advanced-model-series-retrain | 3 | 11 min | 3.7 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -123,6 +123,11 @@ Recent decisions affecting current work:
 - Default momentum = 0.03 — Within 0.02-0.05 range from CONTEXT, chosen as middle ground; series calibration will validate (10-02)
 - Series calibration uses 5 bins with relaxed 60% threshold — Small sample size (~20-30 series) means fewer bins and relaxed threshold with explicit caveat (10-02)
 - Probabilities clamped to [0.05, 0.95] at map level — Prevents degenerate series predictions from single deterministic map (10-02)
+- Thesis hierarchy: Side×Map > Pistol > Economy > Momentum > Combat — From 10-CONTEXT decisions, validated via SHAP feature importance (10-03)
+- Feature categorization uses keyword matching — attack/defense/half=side_map, pistol=pistol, economy/eco/buy=economy, streak/comeback=momentum, clutch/multikill=combat (10-03)
+- Meta shift detected when cross-tournament top-10 overlap < 70% — Per CONTEXT, signals feature importance instability across tournaments (10-03)
+- Stable features appear in top-N across ALL tournaments — Trustworthy for betting edge, signal persists across metas (10-03)
+- Unstable features appear in SOME but not ALL tournaments — Signal may expire, recommend retraining when meta shifts (10-03)
 
 ### Pending Todos
 
@@ -150,8 +155,8 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 10-02-PLAN.md (BO3/BO5 series prediction with momentum)
+Stopped at: Completed 10-03-PLAN.md (Thesis validation framework)
 Resume file: None
 
 ---
-*Next step: Phase 10 Plans 10-03, 10-04, 10-05 — Thesis validation framework, hyperparameter tuning, cross-tournament validation*
+*Next step: Phase 10 Plans 10-04, 10-05 — Hyperparameter tuning (Optuna + GridSearchCV), cross-tournament validation & retrain*
