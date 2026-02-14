@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 ## Current Position
 
-Phase: 7 of 10 (Dataset Expansion) — COMPLETE
-Plan: 3 of 3 in phase (all complete)
-Status: Complete
-Last activity: 2026-02-14 — Phase 7 complete (3/3 plans, 7/7 must-haves verified)
+Phase: 8 of 10 (Feature Engineering)
+Plan: 1 of 4 in phase (08-01 complete)
+Status: In progress
+Last activity: 2026-02-14 — Completed 08-01-PLAN.md (Economy reconstruction)
 
-Progress: [######░░░░] 50% (v1 Phase 1 + v2 Phases 5-7 complete)
+Progress: [#######░░░] 56% (v1 Phase 1 + v2 Phases 5-7 + Phase 8 Plan 1 complete)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [######░░░░] 50% (v1 Phase 1 + v2 Phases 5-7 complete)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15
-- Average duration: 12.6 min
-- Total execution time: 3.15 hours
+- Total plans completed: 16
+- Average duration: 12.3 min
+- Total execution time: 3.24 hours
 
 **By Phase:**
 
@@ -38,6 +38,7 @@ Progress: [######░░░░] 50% (v1 Phase 1 + v2 Phases 5-7 complete)
 | 05-data-pipeline-validation | 4 | 14 min | 3.5 min |
 | 06-valoscribe-adaptation | 4 | 20.3 min | 5.1 min |
 | 07-dataset-expansion | 3 | 133.9 min | 44.6 min |
+| 08-feature-engineering | 1 | 5.3 min | 5.3 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -86,6 +87,9 @@ Recent decisions affecting current work:
 - 46 VODs queued from two major tournaments — Masters Bangkok 2024 + VCT Americas 2024 Stage 1 for temporal diversity (07-03)
 - Windows console encoding fixed for UTF-8 team names — sys.stdout.reconfigure + PYTHONIOENCODING (07-03)
 - Processing remains manual start for user control — VOD processing takes 15-20 hours, user decides when to start (07-03)
+- Economy tier thresholds: eco (0-2500), light_buy (2500-3500), half_buy (3500-3900), full_buy (3900+) — Based on Valorant buy costs and strategic value (08-01)
+- Economy credit tracking is approximate — Goal is tier classification, not exact values; uses spending estimates per tier (08-01)
+- TDD workflow for feature modules — RED (failing tests) → GREEN (implementation) → atomic commits pattern established (08-01)
 
 ### Pending Todos
 
@@ -113,8 +117,8 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Phase 7 complete
+Stopped at: Completed 08-01-PLAN.md (Economy reconstruction)
 Resume file: None
 
 ---
-*Next step: /gsd:discuss-phase 8 (Feature Engineering) — can proceed while VOD processing runs in background*
+*Next step: Continue Phase 8 (remaining plans: 02-round-features, 03-match-features, 04-elo-ratings)*
