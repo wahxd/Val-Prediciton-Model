@@ -115,14 +115,13 @@ class TestEconomyTracker:
         assert len(result) == 2
         # Round 2: Team A won R1, gets win bonus
         # Simplified: assume pistol spent all 800, so R2 = 0 + 3000 = 3000 per player
-        # But we need to handle spending... the plan says to track team totals.
-        # Let's assume: after pistol, teams have ~0 credits left (spent all).
-        # Winner: 0 + 3000*5 = 15000
-        # Loser: 0 + 1900*5 = 9500
+        # Winner: 0 + 3000*5 = 15000 (3000 per player = light_buy)
+        # Loser: 0 + 1900*5 = 9500 (1900 per player = eco)
         assert result[1].round_number == 2
-        # Per-player: 15000/5 = 3000 (full_buy), 9500/5 = 1900 (eco)
-        assert result[1].team1_tier == "full_buy"
-        assert result[1].team2_tier == "eco"
+        assert result[1].team1_credits == 15000
+        assert result[1].team2_credits == 9500
+        assert result[1].team1_tier == "light_buy"  # 3000 per player
+        assert result[1].team2_tier == "eco"  # 1900 per player
         assert result[1].team1_loss_streak == 0
         assert result[1].team2_loss_streak == 1
 
@@ -215,10 +214,11 @@ class TestEconomyTracker:
         result = tracker.reconstruct()
 
         # Team B: loses R1, R2, wins R3, loses R4
-        assert result[1].team2_loss_streak == 1
-        assert result[2].team2_loss_streak == 2
-        assert result[3].team2_loss_streak == 0  # Won R3, streak reset
-        assert result[4].team2_loss_streak == 1  # Lost R4, streak = 1
+        # Note: loss_streak is the streak ENTERING the round
+        assert result[0].team2_loss_streak == 0  # R1: no streak yet (pistol)
+        assert result[1].team2_loss_streak == 1  # R2: lost R1
+        assert result[2].team2_loss_streak == 2  # R3: lost R1, R2
+        assert result[3].team2_loss_streak == 0  # R4: won R3, streak reset
 
     def test_spike_plant_bonus(self):
         """Attacking team gets 300 credits per player even on round loss."""
@@ -359,4 +359,9 @@ class TestEconomyTracker:
 
         assert len(result) == 2
         assert result[0].team1_tier == "pistol"
-        assert result[1].team2_tier == "full_buy"  # Team B won R2
+        # Team B won R2 after losing R1
+        # Team B: 0 (spent pistol) + 1900 (loss bonus) - loss bonus will be used in R2
+        # Actually, they lost R1, so in R2 they get loss bonus (1900)
+        # But they WON R2, so this checks team2 tier AT START of R2
+        # Team B lost R1, so they get 1900 loss bonus = eco tier
+        assert result[1].team2_tier == "eco"  # Team B lost R1, has 1900 credits
