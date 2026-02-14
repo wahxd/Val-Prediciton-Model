@@ -10,10 +10,11 @@ from pathlib import Path
 
 import numpy as np
 import sklearn
+import xgboost
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import LogisticRegression
 
-from src.modeling.baseline import BaselineTrainer
+from src.modeling.baseline import BaselineTrainer, XGBoostTrainer
 from src.modeling.config import ModelConfig
 
 
@@ -44,22 +45,26 @@ def create_calibrated_model(
     )
 
 
-def serialize_model_to_json(trainer: BaselineTrainer, filepath: Path) -> None:
-    """Save model coefficients and config to JSON file.
+def serialize_model_to_json(trainer: BaselineTrainer | XGBoostTrainer, filepath: Path) -> None:
+    """Save model config and metadata to JSON file.
 
-    Serializes model as coefficients + metadata rather than pickle for:
-        - Long-term stability (sklearn version independence)
+    For LogisticRegression: Serializes coefficients + metadata (JSON-only, no binary).
+    For XGBoost: Serializes config + feature importances as JSON. Use save_xgboost_model()
+    for full binary model (XGBoost's native format).
+
+    Serializes as JSON rather than pickle for:
+        - Long-term stability (version independence)
         - Human readability
         - Cross-platform compatibility
 
     Args:
-        trainer: Trained BaselineTrainer instance
+        trainer: Trained BaselineTrainer or XGBoostTrainer instance
         filepath: Output JSON file path
 
     Raises:
         ValueError: If trainer model hasn't been trained yet
 
-    JSON Structure:
+    JSON Structure for logistic_regression:
         {
             "model_type": "logistic_regression",
             "config": {... ModelConfig as dict ...},
@@ -74,30 +79,66 @@ def serialize_model_to_json(trainer: BaselineTrainer, filepath: Path) -> None:
                 "sklearn_version": "x.y.z"
             }
         }
+
+    JSON Structure for xgboost:
+        {
+            "model_type": "xgboost",
+            "config": {... ModelConfig as dict ...},
+            "feature_importances": {
+                "importance": [...float values...],
+                "feature_names": null
+            },
+            "metadata": {
+                "serialized_at": "ISO timestamp",
+                "xgboost_version": "x.y.z",
+                "note": "Full model saved separately via save_xgboost_model()"
+            }
+        }
     """
     if trainer.model_ is None:
         raise ValueError("Trainer model must be fitted before serialization")
 
-    # Extract coefficients
-    coef = trainer.model_.coef_.tolist()
-    intercept = trainer.model_.intercept_.tolist()
-    classes = trainer.model_.classes_.tolist()
+    # Handle based on trainer type
+    if isinstance(trainer, BaselineTrainer):
+        # Extract coefficients
+        coef = trainer.model_.coef_.tolist()
+        intercept = trainer.model_.intercept_.tolist()
+        classes = trainer.model_.classes_.tolist()
 
-    # Build JSON structure
-    data = {
-        "model_type": "logistic_regression",
-        "config": trainer.config.model_dump(),
-        "coefficients": {
-            "coef": coef,
-            "intercept": intercept,
-            "feature_names": None,  # Feature names tracked at pipeline level
-            "classes": classes,
-        },
-        "metadata": {
-            "serialized_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-            "sklearn_version": sklearn.__version__,
-        },
-    }
+        # Build JSON structure
+        data = {
+            "model_type": "logistic_regression",
+            "config": trainer.config.model_dump(),
+            "coefficients": {
+                "coef": coef,
+                "intercept": intercept,
+                "feature_names": None,  # Feature names tracked at pipeline level
+                "classes": classes,
+            },
+            "metadata": {
+                "serialized_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                "sklearn_version": sklearn.__version__,
+            },
+        }
+
+    elif isinstance(trainer, XGBoostTrainer):
+        # Extract feature importances
+        importances = trainer.get_feature_importances()
+
+        # Build JSON structure
+        data = {
+            "model_type": "xgboost",
+            "config": trainer.config.model_dump(),
+            "feature_importances": importances,
+            "metadata": {
+                "serialized_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                "xgboost_version": xgboost.__version__,
+                "note": "Full model saved separately via save_xgboost_model()",
+            },
+        }
+
+    else:
+        raise ValueError(f"Unsupported trainer type: {type(trainer)}")
 
     # Write to file
     filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -105,11 +146,63 @@ def serialize_model_to_json(trainer: BaselineTrainer, filepath: Path) -> None:
         json.dump(data, f, indent=2)
 
 
+def save_xgboost_model(trainer: XGBoostTrainer, filepath: Path) -> None:
+    """Save XGBoost model to binary file using XGBoost's native format.
+
+    This saves the full trained model (trees, splits, weights) in XGBoost's
+    portable binary format. Use alongside serialize_model_to_json() for complete
+    model archival (JSON for metadata, binary for model weights).
+
+    Args:
+        trainer: Trained XGBoostTrainer instance
+        filepath: Output file path (typically .ubj or .json extension)
+
+    Raises:
+        ValueError: If trainer model hasn't been trained yet
+
+    Notes:
+        - Uses XGBoost's save_model() which supports multiple formats
+        - .ubj (Universal Binary JSON) is recommended for portability
+        - More portable than pickle, works across XGBoost versions
+    """
+    if trainer.model_ is None:
+        raise ValueError("Trainer model must be fitted before saving")
+
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    trainer.model_.save_model(filepath)
+
+
+def load_xgboost_model(filepath: Path, config: ModelConfig) -> XGBoostTrainer:
+    """Load XGBoost model from binary file.
+
+    Args:
+        filepath: Path to model file created by save_xgboost_model()
+        config: ModelConfig with same parameters used during training
+
+    Returns:
+        XGBoostTrainer with loaded model ready for prediction
+
+    Raises:
+        FileNotFoundError: If filepath doesn't exist
+
+    Notes:
+        - Loaded model is ready for prediction (no fit() needed)
+        - Config must match original training config (not validated)
+    """
+    trainer = XGBoostTrainer(config)
+    trainer.model_ = trainer.model_factory()
+    trainer.model_.load_model(filepath)
+
+    return trainer
+
+
 def load_model_from_json(filepath: Path) -> tuple[BaselineTrainer, dict]:
-    """Load model from JSON file.
+    """Load logistic regression model from JSON file.
 
     Reconstructs LogisticRegression by setting coef_ and intercept_ directly,
     bypassing the fit() process.
+
+    For XGBoost models, this function raises an error directing to load_xgboost_model().
 
     Args:
         filepath: Path to JSON file created by serialize_model_to_json()
@@ -118,20 +211,29 @@ def load_model_from_json(filepath: Path) -> tuple[BaselineTrainer, dict]:
         Tuple of (trainer_with_fitted_model, metadata_dict)
 
     Raises:
-        ValueError: If JSON structure is invalid or model_type unsupported
+        ValueError: If JSON structure is invalid, model_type is xgboost, or unsupported
 
     Notes:
         - Loaded model is ready for prediction (no fit() needed)
         - Metadata includes original sklearn version and serialization timestamp
+        - For XGBoost: Use load_xgboost_model() with binary model file instead
     """
     with open(filepath, "r") as f:
         data = json.load(f)
 
     # Validate model type
-    if data.get("model_type") != "logistic_regression":
+    model_type = data.get("model_type")
+
+    if model_type == "xgboost":
         raise ValueError(
-            f"Unsupported model_type: {data.get('model_type')}. "
-            "Only 'logistic_regression' is supported."
+            "XGBoost models cannot be fully loaded from JSON (only metadata). "
+            "Use load_xgboost_model() to load the binary model file created by save_xgboost_model()."
+        )
+
+    if model_type != "logistic_regression":
+        raise ValueError(
+            f"Unsupported model_type: {model_type}. "
+            "Only 'logistic_regression' is supported by load_model_from_json()."
         )
 
     # Reconstruct config
@@ -142,7 +244,7 @@ def load_model_from_json(filepath: Path) -> tuple[BaselineTrainer, dict]:
 
     # Reconstruct model manually
     model = LogisticRegression(
-        penalty='l2',
+        penalty=config.penalty,
         C=config.C,
         solver=config.solver,
         max_iter=config.max_iter,

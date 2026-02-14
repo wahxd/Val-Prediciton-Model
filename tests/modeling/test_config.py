@@ -81,6 +81,133 @@ class TestModelConfig:
         with pytest.raises(ValidationError):
             config.C = 10.0
 
+    def test_xgboost_config_defaults(self):
+        """Test XGBoost config uses correct defaults."""
+        config = ModelConfig(model_type="xgboost", feature_set="core")
+
+        assert config.model_type == "xgboost"
+        assert config.max_depth == 3
+        assert config.min_child_weight == 5
+        assert config.n_estimators == 50
+        assert config.learning_rate == 0.1
+        assert config.subsample == 0.8
+        assert config.colsample_bytree == 0.8
+        assert config.reg_alpha == 0.1
+        assert config.reg_lambda == 1.0
+
+    def test_xgboost_config_all_params(self):
+        """Test XGBoost config accepts all XGBoost parameters."""
+        config = ModelConfig(
+            model_type="xgboost",
+            feature_set="combat",
+            max_depth=4,
+            min_child_weight=7,
+            n_estimators=80,
+            learning_rate=0.15,
+            subsample=0.85,
+            colsample_bytree=0.9,
+            reg_alpha=0.3,
+            reg_lambda=1.5,
+            random_state=123,
+        )
+
+        assert config.max_depth == 4
+        assert config.min_child_weight == 7
+        assert config.n_estimators == 80
+        assert config.learning_rate == 0.15
+        assert config.subsample == 0.85
+        assert config.colsample_bytree == 0.9
+        assert config.reg_alpha == 0.3
+        assert config.reg_lambda == 1.5
+        assert config.random_state == 123
+
+    def test_xgboost_max_depth_validation(self):
+        """Test max_depth range validation (2-4)."""
+        # Valid values
+        ModelConfig(model_type="xgboost", feature_set="core", max_depth=2)
+        ModelConfig(model_type="xgboost", feature_set="core", max_depth=4)
+
+        # Invalid: too low
+        with pytest.raises(ValidationError) as exc_info:
+            ModelConfig(model_type="xgboost", feature_set="core", max_depth=1)
+        assert "max_depth" in str(exc_info.value)
+
+        # Invalid: too high
+        with pytest.raises(ValidationError) as exc_info:
+            ModelConfig(model_type="xgboost", feature_set="core", max_depth=5)
+        assert "max_depth" in str(exc_info.value)
+
+    def test_xgboost_min_child_weight_validation(self):
+        """Test min_child_weight range validation (3-10)."""
+        # Valid values
+        ModelConfig(model_type="xgboost", feature_set="core", min_child_weight=3)
+        ModelConfig(model_type="xgboost", feature_set="core", min_child_weight=10)
+
+        # Invalid: too low
+        with pytest.raises(ValidationError) as exc_info:
+            ModelConfig(model_type="xgboost", feature_set="core", min_child_weight=2)
+        assert "min_child_weight" in str(exc_info.value)
+
+        # Invalid: too high
+        with pytest.raises(ValidationError) as exc_info:
+            ModelConfig(model_type="xgboost", feature_set="core", min_child_weight=11)
+        assert "min_child_weight" in str(exc_info.value)
+
+    def test_xgboost_n_estimators_validation(self):
+        """Test n_estimators range validation (30-100)."""
+        # Valid values
+        ModelConfig(model_type="xgboost", feature_set="core", n_estimators=30)
+        ModelConfig(model_type="xgboost", feature_set="core", n_estimators=100)
+
+        # Invalid: too low
+        with pytest.raises(ValidationError) as exc_info:
+            ModelConfig(model_type="xgboost", feature_set="core", n_estimators=29)
+        assert "n_estimators" in str(exc_info.value)
+
+        # Invalid: too high
+        with pytest.raises(ValidationError) as exc_info:
+            ModelConfig(model_type="xgboost", feature_set="core", n_estimators=101)
+        assert "n_estimators" in str(exc_info.value)
+
+    def test_xgboost_learning_rate_validation(self):
+        """Test learning_rate range validation (0.01-0.2)."""
+        # Valid values
+        ModelConfig(model_type="xgboost", feature_set="core", learning_rate=0.01)
+        ModelConfig(model_type="xgboost", feature_set="core", learning_rate=0.2)
+
+        # Invalid: too low
+        with pytest.raises(ValidationError) as exc_info:
+            ModelConfig(model_type="xgboost", feature_set="core", learning_rate=0.005)
+        assert "learning_rate" in str(exc_info.value)
+
+        # Invalid: too high
+        with pytest.raises(ValidationError) as exc_info:
+            ModelConfig(model_type="xgboost", feature_set="core", learning_rate=0.25)
+        assert "learning_rate" in str(exc_info.value)
+
+    def test_penalty_l1_with_saga_solver(self):
+        """Test penalty='l1' is accepted with solver='saga'."""
+        config = ModelConfig(
+            model_type="logistic_regression",
+            feature_set="core",
+            penalty="l1",
+            solver="saga",
+        )
+
+        assert config.penalty == "l1"
+        assert config.solver == "saga"
+
+    def test_penalty_validation(self):
+        """Test penalty validation allows l1 and l2."""
+        # Valid values
+        ModelConfig(feature_set="core", penalty="l1", solver="saga")
+        ModelConfig(feature_set="core", penalty="l2")
+
+        # Invalid value
+        with pytest.raises(ValidationError) as exc_info:
+            ModelConfig(feature_set="core", penalty="elasticnet")
+        assert "penalty" in str(exc_info.value)
+
 
 class TestExperimentConfig:
     """Tests for ExperimentConfig validation."""
