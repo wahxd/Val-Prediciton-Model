@@ -190,10 +190,14 @@ Plans:
   5. Model is retrained on the expanded dataset (100+ maps from Phase 7) and log loss is compared to the Champions-only model
   6. Cross-tournament validation (train on Champions 2025, test on new tournament) produces a measurable log loss, and any accuracy drop >10pp is flagged with investigation findings
 
-**Plans**: TBD
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (to be planned)
+- [ ] 10-01-PLAN.md -- XGBoost trainer, ModelConfig extensions, dependencies
+- [ ] 10-02-PLAN.md -- BO3/BO5 series win probability with momentum adjustment
+- [ ] 10-03-PLAN.md -- Thesis validation framework (feature hierarchy check)
+- [ ] 10-04-PLAN.md -- Hyperparameter tuning (Optuna XGBoost + GridSearchCV logistic regression)
+- [ ] 10-05-PLAN.md -- Cross-tournament validation, recency weighting, retrain comparison
 
 ## Progress
 
@@ -213,7 +217,7 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 | 7. Dataset Expansion (VOD Processing) | v2 | 3/3 | Complete | 2026-02-14 |
 | 8. Feature Engineering | v2 | 4/4 | Complete | 2026-02-14 |
 | 9. Baseline Model & Evaluation | v2 | 3/3 | Complete | 2026-02-14 |
-| 10. Advanced Model, Series Prediction & Retrain | v2 | 0/TBD | Not started | - |
+| 10. Advanced Model, Series Prediction & Retrain | v2 | 0/5 | Planned | - |
 
 ---
 *Roadmap created: 2026-02-12 (v1)*
@@ -228,4 +232,5 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 *Phase 8 complete: 2026-02-14 (4/4 plans, 5/5 must-haves verified, 79 tests)*
 *Phase 9 planned: 2026-02-14 (3 plans in 3 waves)*
 *Phase 9 complete: 2026-02-14 (3/3 plans, 5/5 must-haves verified, 66 tests)*
+*Phase 10 planned: 2026-02-14 (5 plans in 2 waves)*
 *Last updated: 2026-02-14*
