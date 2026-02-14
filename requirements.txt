@@ -19,3 +19,6 @@ requests>=2.32
 tenacity>=9.0
 shap>=0.45.0
 matplotlib>=3.8.0
+xgboost>=3.0
+optuna>=3.0
+scipy>=1.11
