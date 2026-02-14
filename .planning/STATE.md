@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** A prediction model accurate enough to identify edge against Polymarket prices on VCT match outcomes.
-**Current focus:** Phase 8 complete — ready for Phase 9 (Baseline Model & Evaluation)
+**Current focus:** Phase 9 complete — ready for Phase 10 (Advanced Modeling & Hyperparameter Tuning)
 
 ## Current Position
 
 Phase: 9 of 10 (Baseline Model & Evaluation)
-Plan: 2 of 3 in phase (09-01, 09-02 complete)
-Status: In progress
-Last activity: 2026-02-14 — Completed 09-02-PLAN.md (Baseline trainer with calibration)
+Plan: 3 of 3 in phase (09-01, 09-02, 09-03 complete)
+Status: Phase complete
+Last activity: 2026-02-14 — Completed 09-03-PLAN.md (Model evaluation & experiment orchestration)
 
-Progress: [#########░] 73% (v1 Phase 1 + v2 Phases 5-8 + 09-01, 09-02 complete)
+Progress: [##########] 100% (v1 Phase 1 + v2 Phases 5-9 complete, Phase 10 remains)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [#########░] 73% (v1 Phase 1 + v2 Phases 5-8 + 09-01, 09-02 complete
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 20
-- Average duration: 10.4 min
-- Total execution time: 3.51 hours
+- Total plans completed: 21
+- Average duration: 10.1 min
+- Total execution time: 3.61 hours
 
 **By Phase:**
 
@@ -39,7 +39,7 @@ Progress: [#########░] 73% (v1 Phase 1 + v2 Phases 5-8 + 09-01, 09-02 complete
 | 06-valoscribe-adaptation | 4 | 20.3 min | 5.1 min |
 | 07-dataset-expansion | 3 | 133.9 min | 44.6 min |
 | 08-feature-engineering | 4 | 14.1 min | 3.5 min |
-| 09-baseline-model-evaluation | 2 | 7 min | 3.5 min |
+| 09-baseline-model-evaluation | 3 | 13 min | 4.3 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -112,6 +112,11 @@ Recent decisions affecting current work:
 - Model factory pattern for cross-validation — BaselineTrainer.model_factory() returns fresh unfitted models to prevent reuse across CV folds (09-02)
 - JSON coefficient serialization for model archival — Serialize coefficients + config + metadata as JSON (not pickle) for sklearn version independence and cross-platform compatibility (09-02)
 - Fixed datetime.utcnow() deprecation — Use datetime.now(UTC) for timezone-aware timestamps (Python 3.13+ best practice) (09-02)
+- SHAP LinearExplainer for feature importance — Mean absolute SHAP values quantify feature impact on predictions (09-03)
+- Game mechanics dominance validation — 80% of top 10 features must be game mechanics (not team identity) to pass interpretability check (09-03)
+- Naive prior baseline validates at ln(2) ≈ 0.693 — Constant 0.5 prediction provides sanity check for model log loss (09-03)
+- Calibration validation uses 70% threshold — Relaxed from typical 80-90% for small datasets (71 maps) with high per-bin variance (09-03)
+- run_experiment orchestrates full pipeline — Single function call for train → CV → SHAP → calibrate → report workflow (09-03)
 
 ### Pending Todos
 
@@ -139,8 +144,8 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 09-02-PLAN.md (Baseline trainer with calibration)
+Stopped at: Completed 09-03-PLAN.md (Model evaluation & experiment orchestration)
 Resume file: None
 
 ---
-*Next step: Phase 9 Plan 03 (Model Evaluation) — Baseline trainer ready, run temporal CV and generate evaluation report*
+*Next step: Phase 10 (Advanced Modeling) — Run baseline experiments on real Valoscribe data, compare feature sets, establish performance target before XGBoost*
