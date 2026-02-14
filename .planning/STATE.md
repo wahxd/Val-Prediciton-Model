@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 7 of 10 (Dataset Expansion) — IN PROGRESS
-Plan: 1 of 5 in phase (07-01 complete)
+Plan: 2 of 5 in phase (07-01, 07-02 complete)
 Status: In progress
-Last activity: 2026-02-13 — Completed 07-01-PLAN.md (VLR discovery & manifest)
+Last activity: 2026-02-13 — Completed 07-02-PLAN.md (Valoscribe orchestration)
 
-Progress: [#####░░░░░] 42% (v1 Phase 1 + v2 Phase 5-6 complete + 07-01 complete)
+Progress: [#####░░░░░] 43% (v1 Phase 1 + v2 Phase 5-6 complete + 07-01, 07-02 complete)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [#####░░░░░] 42% (v1 Phase 1 + v2 Phase 5-6 complete + 07-01
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: 3.7 min
-- Total execution time: 0.97 hours
+- Total execution time: 1.04 hours
 
 **By Phase:**
 
@@ -37,7 +37,7 @@ Progress: [#####░░░░░] 42% (v1 Phase 1 + v2 Phase 5-6 complete + 07-01
 | 01-event-detection-foundation | 4 | 16 min | 4 min |
 | 05-data-pipeline-validation | 4 | 14 min | 3.5 min |
 | 06-valoscribe-adaptation | 4 | 20.3 min | 5.1 min |
-| 07-dataset-expansion | 1 | 3.8 min | 3.8 min |
+| 07-dataset-expansion | 2 | 7.9 min | 4.0 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -77,6 +77,11 @@ Recent decisions affecting current work:
 - VOD discovery is idempotent — Re-running scraper on same event adds only new VODs, safe for incremental updates (07-01)
 - Rate limiting defaults to 1.5s between requests — Polite scraping prevents VLR.gg rate limiting (07-01)
 - Maps without VOD URLs are skipped automatically — Reduces processing queue to only actionable VODs (07-01)
+- ProcessingConfig uses EXPANSION_ env var prefix — Consistent with VALOSCRIBE_DATA_DIR pattern, namespace isolation for multi-developer setups (07-02)
+- Orchestrator downloads series metadata once per match — Valoscribe scrape-vlr → split-metadata → per-map process-vod flow (07-02)
+- VOD files deleted after successful processing — Default True, saves disk space during multi-day processing runs (07-02)
+- CLI scripts use stdlib argparse — No typer/click dependency, simpler for standalone scripts (07-02)
+- Progress monitoring includes ETA calculation — Average processing time × pending count for user planning (07-02)
 
 ### Pending Todos
 
@@ -105,8 +110,8 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-13
-Stopped at: Completed 07-01-PLAN.md (VLR discovery & manifest)
+Stopped at: Completed 07-02-PLAN.md (Valoscribe orchestration)
 Resume file: None
 
 ---
-*Next step: /gsd:execute-phase 7 --plan 02 (Valoscribe sys.path setup + discovery orchestration)*
+*Next step: /gsd:execute-phase 7 --plan 03 (VOD processing execution)*
