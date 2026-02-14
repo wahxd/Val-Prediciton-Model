@@ -44,6 +44,18 @@ def leave_one_tournament_out_cv(
             - meta_shift_detected: bool (accuracy_range > 0.10 per CONTEXT)
             - worst_tournament: name and metrics of worst-performing fold
     """
+    # Check if we have at least 2 tournaments
+    unique_tournaments = np.unique(tournament_ids)
+    if len(unique_tournaments) < 2:
+        # Can't do LOTO with single tournament - return empty results
+        return {
+            "per_tournament_results": [],
+            "overall_log_loss": float("nan"),
+            "accuracy_range": 0.0,
+            "meta_shift_detected": False,
+            "worst_tournament": None,
+        }
+
     logo = LeaveOneGroupOut()
     results = []
     all_y_true = []
