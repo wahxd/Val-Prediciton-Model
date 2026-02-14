@@ -1,0 +1,77 @@
+# Feature Set Definitions
+#
+# Named feature sets for reproducible model experiments.
+# Sets support composable inheritance via 'extends' field.
+#
+# Philosophy:
+# - "core": Essential game mechanics (score, rounds, pistols, halves)
+# - "combat": Combat metrics (first blood, clutches, multi-kills)
+# - "side_performance": Attack/defense split
+# - "economy": Economy tracking and eco round performance
+# - "full": Complete feature set (all categories combined)
+
+version: "1.0"
+
+feature_sets:
+  # Core game mechanics features
+  - name: core
+    description: Essential score and round outcome features
+    features:
+      - final_score_team1
+      - final_score_team2
+      - score_differential
+      - total_rounds
+      - went_to_overtime
+      - pistol_round1_winner
+      - pistol_round2_winner
+      - pistol_rounds_won_team1
+      - first_half_score_team1
+      - first_half_score_team2
+      - second_half_score_team1
+      - second_half_score_team2
+      - max_win_streak_team1
+      - max_win_streak_team2
+      - max_loss_streak_team1
+      - max_loss_streak_team2
+      - comeback_from_behind
+
+  # Combat performance metrics
+  - name: combat
+    description: Combat metrics (first blood, clutches, multi-kills) on top of core
+    extends: core
+    features:
+      - first_blood_rate_team1
+      - first_blood_rate_team2
+      - clutch_rounds_team1
+      - clutch_rounds_team2
+      - multi_kill_rounds_team1
+      - multi_kill_rounds_team2
+
+  # Side-specific performance
+  - name: side_performance
+    description: Attack and defense win rates added to combat set
+    extends: combat
+    features:
+      - attack_win_rate_team1
+      - defense_win_rate_team1
+      - attack_win_rate_team2
+      - defense_win_rate_team2
+
+  # Economy features
+  - name: economy
+    description: Economy tracking and eco round performance on top of side performance
+    extends: side_performance
+    features:
+      - eco_round_win_rate_team1
+      - eco_round_win_rate_team2
+      - avg_economy_differential
+      - force_buy_rounds_team1
+      - force_buy_rounds_team2
+      - full_buy_rounds_team1
+      - eco_rounds_team1
+
+  # Complete feature set
+  - name: full
+    description: All available features (economy set includes everything)
+    extends: economy
+    features: []  # No additional features - economy already has everything
