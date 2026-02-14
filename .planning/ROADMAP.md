@@ -65,7 +65,7 @@ Phases 2-4 superseded by Valoscribe adoption. Valoscribe handles event storage, 
 - [ ] **Phase 6: Valoscribe Adaptation** - Port ReplayDetector, add output adapter for ALL possible data, validate on 71 maps
 - [x] **Phase 7: Dataset Expansion (VOD Processing)** - Start processing additional VODs via modified Valoscribe (runs in background)
 - [x] **Phase 8: Feature Engineering** - Transform raw events into predictive features at round, map, and match level
-- [ ] **Phase 9: Baseline Model & Evaluation** - Logistic regression baseline with walk-forward temporal validation
+- [x] **Phase 9: Baseline Model & Evaluation** - Logistic regression baseline with walk-forward temporal validation
 - [ ] **Phase 10: Advanced Model, Series Prediction & Retrain** - XGBoost, Optuna, BO3/BO5 series, retrain on expanded dataset
 
 ## Phase Details
@@ -171,9 +171,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 09-01-PLAN.md -- Configuration schemas & evaluation framework (ModelConfig, ExperimentConfig, temporal CV, report generation)
-- [ ] 09-02-PLAN.md -- Baseline trainer, calibration wrapper & JSON serialization
-- [ ] 09-03-PLAN.md -- SHAP explainability, baseline comparisons & end-to-end experiment runner
+- [x] 09-01-PLAN.md -- Configuration schemas & evaluation framework (ModelConfig, ExperimentConfig, temporal CV, report generation)
+- [x] 09-02-PLAN.md -- Baseline trainer, calibration wrapper & JSON serialization
+- [x] 09-03-PLAN.md -- SHAP explainability, baseline comparisons & end-to-end experiment runner
 
 ### Phase 10: Advanced Model, Series Prediction & Retrain
 **Goal**: Improve prediction quality with XGBoost gradient boosting, extend to series-level (BO3/BO5) win probability, and retrain on the expanded dataset from Phase 7 when VOD processing completes
@@ -212,7 +212,7 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 | 6. Valoscribe Adaptation | v2 | 0/5 | Planned | - |
 | 7. Dataset Expansion (VOD Processing) | v2 | 3/3 | Complete | 2026-02-14 |
 | 8. Feature Engineering | v2 | 4/4 | Complete | 2026-02-14 |
-| 9. Baseline Model & Evaluation | v2 | 0/3 | Planned | - |
+| 9. Baseline Model & Evaluation | v2 | 3/3 | Complete | 2026-02-14 |
 | 10. Advanced Model, Series Prediction & Retrain | v2 | 0/TBD | Not started | - |
 
 ---
@@ -227,4 +227,5 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 *Phase 8 planned: 2026-02-14 (4 plans in 3 waves)*
 *Phase 8 complete: 2026-02-14 (4/4 plans, 5/5 must-haves verified, 79 tests)*
 *Phase 9 planned: 2026-02-14 (3 plans in 3 waves)*
+*Phase 9 complete: 2026-02-14 (3/3 plans, 5/5 must-haves verified, 66 tests)*
 *Last updated: 2026-02-14*

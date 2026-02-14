@@ -67,23 +67,23 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 
 ### Model Training
 
-- [ ] **MODL-01**: Logistic regression baseline with L2 regularization and 3-5 features (Elo differential, map win rate, starting side, score differential, economy tier)
+- [x] **MODL-01**: Logistic regression baseline with L2 regularization and 3-5 features (Elo differential, map win rate, starting side, score differential, economy tier)
 - [ ] **MODL-02**: XGBoost gradient boosting model with regularization constraints (max_depth=4, min_child_weight tuned for n=71)
-- [ ] **MODL-03**: Configuration-driven model training (ModelConfig specifies model type, hyperparameters, feature set name)
-- [ ] **MODL-04**: Post-training probability calibration via Platt scaling (CalibratedClassifierCV)
-- [ ] **MODL-05**: Model serialization using XGBoost native JSON format (not joblib/pickle)
+- [x] **MODL-03**: Configuration-driven model training (ModelConfig specifies model type, hyperparameters, feature set name)
+- [x] **MODL-04**: Post-training probability calibration via Platt scaling (CalibratedClassifierCV)
+- [x] **MODL-05**: Model serialization using XGBoost native JSON format (not joblib/pickle)
 - [ ] **MODL-06**: Hyperparameter tuning via Optuna Bayesian optimization for XGBoost
-- [ ] **MODL-07**: SHAP feature importance analysis to validate model learns game mechanics (economy, momentum) not just team identity
+- [x] **MODL-07**: SHAP feature importance analysis to validate model learns game mechanics (economy, momentum) not just team identity
 
 ### Evaluation
 
-- [ ] **EVAL-01**: Walk-forward temporal validation with chronological ordering (never random splits)
-- [ ] **EVAL-02**: Leave-one-series-out cross-validation grouped by series_id to prevent leakage
-- [ ] **EVAL-03**: Primary metric: log loss (calibrated probability quality)
-- [ ] **EVAL-04**: Secondary metrics: Brier score, calibration curve (reliability diagram), accuracy
-- [ ] **EVAL-05**: Baseline comparison: model must beat naive prior (log loss < 0.693) and "always pick higher-ranked team"
-- [ ] **EVAL-06**: Calibration validation: predicted probabilities within ±10% of observed frequencies on reliability diagram
-- [ ] **EVAL-07**: Generate evaluation reports (JSON metrics + matplotlib plots) per experiment
+- [x] **EVAL-01**: Walk-forward temporal validation with chronological ordering (never random splits)
+- [x] **EVAL-02**: Leave-one-series-out cross-validation grouped by series_id to prevent leakage
+- [x] **EVAL-03**: Primary metric: log loss (calibrated probability quality)
+- [x] **EVAL-04**: Secondary metrics: Brier score, calibration curve (reliability diagram), accuracy
+- [x] **EVAL-05**: Baseline comparison: model must beat naive prior (log loss < 0.693) and "always pick higher-ranked team"
+- [x] **EVAL-06**: Calibration validation: predicted probabilities within ±10% of observed frequencies on reliability diagram
+- [x] **EVAL-07**: Generate evaluation reports (JSON metrics + matplotlib plots) per experiment
 
 ### Series Prediction
 
@@ -166,20 +166,20 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 | FEAT-06 | Phase 8 | Complete |
 | FEAT-07 | Phase 8 | Complete |
 | FEAT-08 | Phase 8 | Complete |
-| MODL-01 | Phase 9 | Pending |
+| MODL-01 | Phase 9 | Complete |
 | MODL-02 | Phase 10 | Pending |
-| MODL-03 | Phase 9 | Pending |
-| MODL-04 | Phase 9 | Pending |
-| MODL-05 | Phase 9 | Pending |
+| MODL-03 | Phase 9 | Complete |
+| MODL-04 | Phase 9 | Complete |
+| MODL-05 | Phase 9 | Complete |
 | MODL-06 | Phase 10 | Pending |
-| MODL-07 | Phase 9 | Pending |
-| EVAL-01 | Phase 9 | Pending |
-| EVAL-02 | Phase 9 | Pending |
-| EVAL-03 | Phase 9 | Pending |
-| EVAL-04 | Phase 9 | Pending |
-| EVAL-05 | Phase 9 | Pending |
-| EVAL-06 | Phase 9 | Pending |
-| EVAL-07 | Phase 9 | Pending |
+| MODL-07 | Phase 9 | Complete |
+| EVAL-01 | Phase 9 | Complete |
+| EVAL-02 | Phase 9 | Complete |
+| EVAL-03 | Phase 9 | Complete |
+| EVAL-04 | Phase 9 | Complete |
+| EVAL-05 | Phase 9 | Complete |
+| EVAL-06 | Phase 9 | Complete |
+| EVAL-07 | Phase 9 | Complete |
 | SERS-01 | Phase 10 | Pending |
 | SERS-02 | Phase 10 | Pending |
 | SERS-03 | Phase 10 | Pending |
@@ -203,4 +203,4 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 
 ---
 *Requirements defined: 2026-02-13*
-*Last updated: 2026-02-14 — Phase 8 complete (FEAT-01 to FEAT-04, FEAT-06 to FEAT-08; FEAT-05 dropped)*
+*Last updated: 2026-02-14 — Phase 9 complete (MODL-01/03/04/05/07, EVAL-01 to EVAL-07)*
