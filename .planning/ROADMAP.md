@@ -168,10 +168,12 @@ Plans:
   4. SHAP feature importance analysis confirms the model learns game mechanics (economy, momentum, side advantage) rather than memorizing team identity
   5. Evaluation reports (JSON metrics + matplotlib plots) are generated per experiment, covering log loss (primary), Brier score, calibration curve, and accuracy
 
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (to be planned)
+- [ ] 09-01-PLAN.md -- Configuration schemas & evaluation framework (ModelConfig, ExperimentConfig, temporal CV, report generation)
+- [ ] 09-02-PLAN.md -- Baseline trainer, calibration wrapper & JSON serialization
+- [ ] 09-03-PLAN.md -- SHAP explainability, baseline comparisons & end-to-end experiment runner
 
 ### Phase 10: Advanced Model, Series Prediction & Retrain
 **Goal**: Improve prediction quality with XGBoost gradient boosting, extend to series-level (BO3/BO5) win probability, and retrain on the expanded dataset from Phase 7 when VOD processing completes
@@ -210,7 +212,7 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 | 6. Valoscribe Adaptation | v2 | 0/5 | Planned | - |
 | 7. Dataset Expansion (VOD Processing) | v2 | 3/3 | Complete | 2026-02-14 |
 | 8. Feature Engineering | v2 | 4/4 | Complete | 2026-02-14 |
-| 9. Baseline Model & Evaluation | v2 | 0/TBD | Not started | - |
+| 9. Baseline Model & Evaluation | v2 | 0/3 | Planned | - |
 | 10. Advanced Model, Series Prediction & Retrain | v2 | 0/TBD | Not started | - |
 
 ---
@@ -224,4 +226,5 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 *Phase 7 complete: 2026-02-14 (3/3 plans, 7/7 must-haves verified, 46 VODs queued, 16 tests)*
 *Phase 8 planned: 2026-02-14 (4 plans in 3 waves)*
 *Phase 8 complete: 2026-02-14 (4/4 plans, 5/5 must-haves verified, 79 tests)*
+*Phase 9 planned: 2026-02-14 (3 plans in 3 waves)*
 *Last updated: 2026-02-14*
