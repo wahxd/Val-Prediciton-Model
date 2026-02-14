@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 9 of 10 (Baseline Model & Evaluation)
-Plan: 1 of 3 in phase (09-01 complete)
+Plan: 2 of 3 in phase (09-01, 09-02 complete)
 Status: In progress
-Last activity: 2026-02-14 — Completed 09-01-PLAN.md (Evaluation framework & config schemas)
+Last activity: 2026-02-14 — Completed 09-02-PLAN.md (Baseline trainer with calibration)
 
-Progress: [#########░] 70% (v1 Phase 1 + v2 Phases 5-8 + 09-01 complete)
+Progress: [#########░] 73% (v1 Phase 1 + v2 Phases 5-8 + 09-01, 09-02 complete)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [#########░] 70% (v1 Phase 1 + v2 Phases 5-8 + 09-01 complete)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19
-- Average duration: 10.9 min
-- Total execution time: 3.46 hours
+- Total plans completed: 20
+- Average duration: 10.4 min
+- Total execution time: 3.51 hours
 
 **By Phase:**
 
@@ -39,7 +39,7 @@ Progress: [#########░] 70% (v1 Phase 1 + v2 Phases 5-8 + 09-01 complete)
 | 06-valoscribe-adaptation | 4 | 20.3 min | 5.1 min |
 | 07-dataset-expansion | 3 | 133.9 min | 44.6 min |
 | 08-feature-engineering | 4 | 14.1 min | 3.5 min |
-| 09-baseline-model-evaluation | 1 | 4 min | 4 min |
+| 09-baseline-model-evaluation | 2 | 7 min | 3.5 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -109,6 +109,9 @@ Recent decisions affecting current work:
 - matplotlib Agg backend for headless environments — Avoids Tk dependency in tests and production (09-01)
 - Model factory pattern for cross-validation — Callable returns fresh estimator to avoid reusing fitted models (09-01)
 - Frozen Pydantic configs for experiments — Immutable configuration prevents accidental mutation during training (09-01)
+- Model factory pattern for cross-validation — BaselineTrainer.model_factory() returns fresh unfitted models to prevent reuse across CV folds (09-02)
+- JSON coefficient serialization for model archival — Serialize coefficients + config + metadata as JSON (not pickle) for sklearn version independence and cross-platform compatibility (09-02)
+- Fixed datetime.utcnow() deprecation — Use datetime.now(UTC) for timezone-aware timestamps (Python 3.13+ best practice) (09-02)
 
 ### Pending Todos
 
@@ -136,8 +139,8 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 09-01-PLAN.md (Evaluation framework & config schemas)
+Stopped at: Completed 09-02-PLAN.md (Baseline trainer with calibration)
 Resume file: None
 
 ---
-*Next step: Phase 9 Plan 02 (Baseline Training) — Evaluation infrastructure ready, train logistic regression baseline*
+*Next step: Phase 9 Plan 03 (Model Evaluation) — Baseline trainer ready, run temporal CV and generate evaluation report*
