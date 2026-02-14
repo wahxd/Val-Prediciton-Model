@@ -146,10 +146,13 @@ Plans:
   4. Match-level features aggregate map features for BO3/BO5 series prediction, and team Elo ratings are computed from historical VCT results
   5. Named feature sets are defined in a feature registry (e.g., "baseline_5", "economy_extended") so experiments reference feature set names, not code
 
-**Plans**: TBD
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (to be planned)
+- [ ] 08-01-PLAN.md -- Economy reconstruction & tier classification (TDD)
+- [ ] 08-02-PLAN.md -- Round-level & combat feature extractors
+- [ ] 08-03-PLAN.md -- Map-level aggregation & feature registry
+- [ ] 08-04-PLAN.md -- Match-level series features & pipeline integration
 
 ### Phase 9: Baseline Model & Evaluation
 **Goal**: Train a logistic regression baseline on real VCT data with walk-forward temporal validation, proving there is predictive signal and establishing the evaluation framework that all future models must pass
@@ -206,7 +209,7 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 | 5. Data Pipeline & Validation | v2 | 4/4 | Complete | 2026-02-13 |
 | 6. Valoscribe Adaptation | v2 | 0/5 | Planned | - |
 | 7. Dataset Expansion (VOD Processing) | v2 | 3/3 | Complete | 2026-02-14 |
-| 8. Feature Engineering | v2 | 0/TBD | Not started | - |
+| 8. Feature Engineering | v2 | 0/4 | Planned | - |
 | 9. Baseline Model & Evaluation | v2 | 0/TBD | Not started | - |
 | 10. Advanced Model, Series Prediction & Retrain | v2 | 0/TBD | Not started | - |
 
