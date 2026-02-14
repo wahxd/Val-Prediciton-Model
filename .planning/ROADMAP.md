@@ -64,7 +64,7 @@ Phases 2-4 superseded by Valoscribe adoption. Valoscribe handles event storage, 
 - [x] **Phase 5: Data Pipeline & Validation** - Ingest Valoscribe output, understand full data format, quality scoring, audit
 - [ ] **Phase 6: Valoscribe Adaptation** - Port ReplayDetector, add output adapter for ALL possible data, validate on 71 maps
 - [x] **Phase 7: Dataset Expansion (VOD Processing)** - Start processing additional VODs via modified Valoscribe (runs in background)
-- [ ] **Phase 8: Feature Engineering** - Transform raw events into predictive features at round, map, and match level
+- [x] **Phase 8: Feature Engineering** - Transform raw events into predictive features at round, map, and match level
 - [ ] **Phase 9: Baseline Model & Evaluation** - Logistic regression baseline with walk-forward temporal validation
 - [ ] **Phase 10: Advanced Model, Series Prediction & Retrain** - XGBoost, Optuna, BO3/BO5 series, retrain on expanded dataset
 
@@ -143,16 +143,16 @@ Plans:
   1. Round-level features (score differential, alive differential, spike status, economy tier) are extractable from any loaded map's events
   2. Economy is reconstructed per-round from round outcomes using Valorant's deterministic economy rules, and each team-round is classified into an economy tier (pistol/eco/half-buy/full-buy)
   3. Map-level features aggregate round data into a single feature vector per map (final score, pistol round outcomes, first half score, win/loss streaks, first blood rate)
-  4. Match-level features aggregate map features for BO3/BO5 series prediction, and team Elo ratings are computed from historical VCT results
+  4. Match-level features aggregate map features for BO3/BO5 series prediction with series momentum features (score differentials, OT tracking, comeback indicators) — Elo dropped per Phase 8 context decisions
   5. Named feature sets are defined in a feature registry (e.g., "baseline_5", "economy_extended") so experiments reference feature set names, not code
 
 **Plans:** 4 plans
 
 Plans:
-- [ ] 08-01-PLAN.md -- Economy reconstruction & tier classification (TDD)
-- [ ] 08-02-PLAN.md -- Round-level & combat feature extractors
-- [ ] 08-03-PLAN.md -- Map-level aggregation & feature registry
-- [ ] 08-04-PLAN.md -- Match-level series features & pipeline integration
+- [x] 08-01-PLAN.md -- Economy reconstruction & tier classification (TDD)
+- [x] 08-02-PLAN.md -- Round-level & combat feature extractors
+- [x] 08-03-PLAN.md -- Map-level aggregation & feature registry
+- [x] 08-04-PLAN.md -- Match-level series features & pipeline integration
 
 ### Phase 9: Baseline Model & Evaluation
 **Goal**: Train a logistic regression baseline on real VCT data with walk-forward temporal validation, proving there is predictive signal and establishing the evaluation framework that all future models must pass
@@ -209,7 +209,7 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 | 5. Data Pipeline & Validation | v2 | 4/4 | Complete | 2026-02-13 |
 | 6. Valoscribe Adaptation | v2 | 0/5 | Planned | - |
 | 7. Dataset Expansion (VOD Processing) | v2 | 3/3 | Complete | 2026-02-14 |
-| 8. Feature Engineering | v2 | 0/4 | Planned | - |
+| 8. Feature Engineering | v2 | 4/4 | Complete | 2026-02-14 |
 | 9. Baseline Model & Evaluation | v2 | 0/TBD | Not started | - |
 | 10. Advanced Model, Series Prediction & Retrain | v2 | 0/TBD | Not started | - |
 
@@ -222,4 +222,6 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 *Phase 6 planned: 2026-02-13 (5 plans in 4 waves)*
 *Phase 7 planned: 2026-02-13 (3 plans in 3 waves)*
 *Phase 7 complete: 2026-02-14 (3/3 plans, 7/7 must-haves verified, 46 VODs queued, 16 tests)*
+*Phase 8 planned: 2026-02-14 (4 plans in 3 waves)*
+*Phase 8 complete: 2026-02-14 (4/4 plans, 5/5 must-haves verified, 79 tests)*
 *Last updated: 2026-02-14*

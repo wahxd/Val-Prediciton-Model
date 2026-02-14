@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-02-13)
 
 **Core value:** A prediction model accurate enough to identify edge against Polymarket prices on VCT match outcomes.
-**Current focus:** Phase 7 complete — ready for Phase 8 (Feature Engineering)
+**Current focus:** Phase 8 complete — ready for Phase 9 (Baseline Model & Evaluation)
 
 ## Current Position
 
@@ -122,7 +122,7 @@ Recent decisions affecting current work:
 - Valoscribe data directory not yet populated — 46 VODs queued, processing awaits user start (07-03)
 - Valoscribe's 71-map dataset will expand to 117+ maps — 46 VODs queued from Masters Bangkok + VCT Americas (07-03)
 - Single-tournament bias (Champions 2025 only) — mitigated by adding Masters Bangkok + VCT Americas data (07-03)
-- Elo ratings must be constructed from VCT historical results — no existing ratings available (Phase 8)
+- ~~Elo ratings must be constructed from VCT historical results~~ — DROPPED in Phase 8 (game mechanics features sufficient, no external data needed)
 - VOD processing bottleneck: 15-20 hours for 46 maps — Phase 7 processing can run in background during Phases 8-9 (07-03)
 - ReplayDetector metrics not yet validated on real VODs — will assess impact during Phase 7 processing (06-01)
 - Pagination not yet handled in event scraper — may miss matches if VLR.gg paginates results (07-01)

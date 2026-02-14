@@ -56,14 +56,14 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 
 ### Feature Engineering
 
-- [ ] **FEAT-01**: Extract round-level features from events (score differential, alive differential, spike status, economy tier)
-- [ ] **FEAT-02**: Reconstruct per-round economy from round outcomes using Valorant's deterministic economy rules (win/loss bonus escalation, kill rewards, spike plant bonus)
-- [ ] **FEAT-03**: Classify economy tier per team per round (pistol/eco/half-buy/full-buy) from reconstructed economy
-- [ ] **FEAT-04**: Aggregate round features into map-level features (final score, pistol round outcomes, first half score, win/loss streaks, first blood rate)
-- [ ] **FEAT-05**: Build team Elo ratings from VCT historical match results (scraped from VLR.gg or constructed from available data)
-- [ ] **FEAT-06**: Compute map-specific team win rates and starting side advantage per map
-- [ ] **FEAT-07**: Aggregate map features into match/series-level features for BO3/BO5 prediction
-- [ ] **FEAT-08**: Feature registry that defines named feature sets for experiments (e.g., "baseline_5", "economy_extended")
+- [x] **FEAT-01**: Extract round-level features from events (score differential, alive differential, spike status, economy tier)
+- [x] **FEAT-02**: Reconstruct per-round economy from round outcomes using Valorant's deterministic economy rules (win/loss bonus escalation, kill rewards, spike plant bonus)
+- [x] **FEAT-03**: Classify economy tier per team per round (pistol/eco/half-buy/full-buy) from reconstructed economy
+- [x] **FEAT-04**: Aggregate round features into map-level features (final score, pistol round outcomes, first half score, win/loss streaks, first blood rate)
+- [ ] ~~**FEAT-05**: Build team Elo ratings from VCT historical match results~~ — Dropped (Elo requires external data unavailable; game mechanics features sufficient per Phase 8 context)
+- [x] **FEAT-06**: Compute map-specific team win rates and starting side advantage per map
+- [x] **FEAT-07**: Aggregate map features into match/series-level features for BO3/BO5 prediction
+- [x] **FEAT-08**: Feature registry that defines named feature sets for experiments (e.g., "baseline_5", "economy_extended")
 
 ### Model Training
 
@@ -158,14 +158,14 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 | VSCR-02 | Phase 6 | Pending |
 | VSCR-03 | Phase 6 | Pending |
 | VSCR-04 | Phase 6 | Pending |
-| FEAT-01 | Phase 8 | Pending |
-| FEAT-02 | Phase 8 | Pending |
-| FEAT-03 | Phase 8 | Pending |
-| FEAT-04 | Phase 8 | Pending |
-| FEAT-05 | Phase 8 | Pending |
-| FEAT-06 | Phase 8 | Pending |
-| FEAT-07 | Phase 8 | Pending |
-| FEAT-08 | Phase 8 | Pending |
+| FEAT-01 | Phase 8 | Complete |
+| FEAT-02 | Phase 8 | Complete |
+| FEAT-03 | Phase 8 | Complete |
+| FEAT-04 | Phase 8 | Complete |
+| FEAT-05 | Phase 8 | Dropped |
+| FEAT-06 | Phase 8 | Complete |
+| FEAT-07 | Phase 8 | Complete |
+| FEAT-08 | Phase 8 | Complete |
 | MODL-01 | Phase 9 | Pending |
 | MODL-02 | Phase 10 | Pending |
 | MODL-03 | Phase 9 | Pending |
@@ -203,4 +203,4 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 
 ---
 *Requirements defined: 2026-02-13*
-*Last updated: 2026-02-14 — Phase 7 complete (EXPN-01)*
+*Last updated: 2026-02-14 — Phase 8 complete (FEAT-01 to FEAT-04, FEAT-06 to FEAT-08; FEAT-05 dropped)*
