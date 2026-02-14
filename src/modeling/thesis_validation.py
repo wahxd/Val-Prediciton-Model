@@ -278,15 +278,15 @@ def compare_feature_importance_across_groups(
         top_features_by_group[group_name]
         for group_name in group_names
     ]
-    stable_features = set.intersection(*all_groups_top_features)
-    stable_features = sorted(list(stable_features))
+    stable_features_set = set.intersection(*all_groups_top_features)
+    stable_features = sorted(list(stable_features_set))
 
     # Find unstable features (appear in SOME but not ALL groups' top-N)
     all_top_features = set.union(*all_groups_top_features)
-    unstable_features = sorted(list(all_top_features - stable_features))
+    unstable_features = sorted(list(all_top_features - stable_features_set))
 
     # Meta shift detection (avg overlap < 70% per CONTEXT)
-    meta_shift_detected = avg_overlap < 70.0
+    meta_shift_detected = bool(avg_overlap < 70.0)
 
     # Trading implications
     if meta_shift_detected:
