@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 
 ## Current Position
 
-Phase: 8 of 10 (Feature Engineering)
-Plan: 4 of 4 in phase (08-01, 08-02, 08-03, 08-04 complete)
-Status: Phase complete
-Last activity: 2026-02-14 — Completed 08-04-PLAN.md (Match features & pipeline)
+Phase: 9 of 10 (Baseline Model & Evaluation)
+Plan: 1 of 3 in phase (09-01 complete)
+Status: In progress
+Last activity: 2026-02-14 — Completed 09-01-PLAN.md (Evaluation framework & config schemas)
 
-Progress: [########░░] 67% (v1 Phase 1 + v2 Phases 5-8 complete)
+Progress: [#########░] 70% (v1 Phase 1 + v2 Phases 5-8 + 09-01 complete)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [########░░] 67% (v1 Phase 1 + v2 Phases 5-8 complete)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18
-- Average duration: 11.4 min
-- Total execution time: 3.39 hours
+- Total plans completed: 19
+- Average duration: 10.9 min
+- Total execution time: 3.46 hours
 
 **By Phase:**
 
@@ -39,6 +39,7 @@ Progress: [########░░] 67% (v1 Phase 1 + v2 Phases 5-8 complete)
 | 06-valoscribe-adaptation | 4 | 20.3 min | 5.1 min |
 | 07-dataset-expansion | 3 | 133.9 min | 44.6 min |
 | 08-feature-engineering | 4 | 14.1 min | 3.5 min |
+| 09-baseline-model-evaluation | 1 | 4 min | 4 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -103,6 +104,11 @@ Recent decisions affecting current work:
 - Pipeline produces pandas DataFrame output — Standard format for scikit-learn model training (08-04)
 - Feature set filtering at pipeline level — Registry enforces reproducible experiments, prevents feature leakage (08-04)
 - Graceful error handling skips bad maps — Continue processing with valid maps rather than fail entire batch (08-04)
+- LeaveOneGroupOut temporal CV with series_id grouping — Prevents series leakage, no maps from same BO3/BO5 in both train and test (09-01)
+- CalibratedClassifierCV wraps all models — Ensures predicted probabilities match observed frequencies for betting applications (09-01)
+- matplotlib Agg backend for headless environments — Avoids Tk dependency in tests and production (09-01)
+- Model factory pattern for cross-validation — Callable returns fresh estimator to avoid reusing fitted models (09-01)
+- Frozen Pydantic configs for experiments — Immutable configuration prevents accidental mutation during training (09-01)
 
 ### Pending Todos
 
@@ -130,8 +136,8 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 08-04-PLAN.md (Match features & pipeline)
+Stopped at: Completed 09-01-PLAN.md (Evaluation framework & config schemas)
 Resume file: None
 
 ---
-*Next step: Phase 9 (Baseline Model) — Feature engineering complete, ready for model training*
+*Next step: Phase 9 Plan 02 (Baseline Training) — Evaluation infrastructure ready, train logistic regression baseline*
