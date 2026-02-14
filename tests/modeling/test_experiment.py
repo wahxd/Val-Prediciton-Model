@@ -310,3 +310,99 @@ def test_run_experiment_beats_baselines_on_informative_data(synthetic_experiment
     model_log_loss = result["cv_results"]["overall_metrics"]["log_loss"]
     naive_log_loss = result["naive_baselines"]["naive_prior"]["log_loss"]
     assert model_log_loss < naive_log_loss * 0.95  # At least 5% improvement
+
+
+def test_run_experiment_with_xgboost_model_type(synthetic_experiment_data, tmp_path):
+    """Experiment works with XGBoost model type."""
+    data = synthetic_experiment_data
+
+    config = ExperimentConfig(
+        experiment_id="test_xgboost",
+        model=ModelConfig(
+            model_type="xgboost",
+            feature_set="core",
+            n_estimators=30,
+            max_depth=2,
+        ),
+        output_dir=tmp_path,
+    )
+
+    result = run_experiment(
+        config,
+        data["X"],
+        data["y"],
+        data["groups"],
+        data["feature_names"],
+    )
+
+    # Check basic structure
+    assert result["experiment_id"] == "test_xgboost"
+    assert "cv_results" in result
+    assert "shap_analysis" in result
+
+    # XGBoost should also beat naive baselines
+    assert result["beats_naive_prior"] is True
+
+
+def test_run_experiment_includes_thesis_validation(synthetic_experiment_data, tmp_path):
+    """Experiment result includes thesis validation."""
+    data = synthetic_experiment_data
+
+    config = ExperimentConfig(
+        experiment_id="test_thesis",
+        model=ModelConfig(feature_set="core", C=1.0),
+        output_dir=tmp_path,
+    )
+
+    result = run_experiment(
+        config,
+        data["X"],
+        data["y"],
+        data["groups"],
+        data["feature_names"],
+    )
+
+    # Check thesis validation in result
+    assert "thesis_validation" in result
+    thesis = result["thesis_validation"]
+
+    assert "hierarchy_respected" in thesis
+    assert "level_counts" in thesis
+    assert "level_avg_importance" in thesis
+    assert "game_mechanics_pct" in thesis
+    assert "interpretation" in thesis
+    assert "concerns" in thesis
+
+
+def test_run_experiment_thesis_validation_in_metrics_json(synthetic_experiment_data, tmp_path):
+    """Thesis validation saved to metrics.json."""
+    data = synthetic_experiment_data
+
+    config = ExperimentConfig(
+        experiment_id="test_thesis_json",
+        model=ModelConfig(feature_set="core", C=1.0),
+        output_dir=tmp_path,
+    )
+
+    result = run_experiment(
+        config,
+        data["X"],
+        data["y"],
+        data["groups"],
+        data["feature_names"],
+    )
+
+    # Read metrics.json
+    import json
+    metrics_path = result["experiment_dir"] / "metrics.json"
+    with open(metrics_path, "r") as f:
+        metrics_data = json.load(f)
+
+    # Check thesis_validation key exists
+    assert "thesis_validation" in metrics_data
+
+    # Check structure
+    thesis = metrics_data["thesis_validation"]
+    assert "hierarchy_respected" in thesis
+    assert "level_counts" in thesis
+    assert "level_avg_importance" in thesis

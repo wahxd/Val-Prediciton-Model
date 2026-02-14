@@ -365,7 +365,7 @@ def compare_models(xgb_cv_results: Dict, lr_cv_results: Dict) -> Dict:
     se_difference = np.sqrt(se_xgb**2 + se_lr**2)
 
     # Significant improvement if difference > 1 SE in favor of XGBoost
-    significant_improvement = difference < -se_difference
+    significant_improvement = bool(difference < -se_difference)
 
     # Check calibration (if available in CV results)
     # For now, compare overall metrics - in real use, would check max_deviation

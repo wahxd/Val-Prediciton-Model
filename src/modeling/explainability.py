@@ -14,19 +14,22 @@ from pathlib import Path
 import shap
 
 
-def compute_shap_importance(
+def compute_shap_for_model(
     model,
+    model_type: str,
     X_train: pd.DataFrame | np.ndarray,
     X_test: pd.DataFrame | np.ndarray,
     feature_names: list[str],
 ) -> dict:
-    """Compute SHAP-based feature importance for a logistic regression model.
+    """Compute SHAP-based feature importance for any model type.
 
-    Uses SHAP LinearExplainer to compute feature attributions on test set.
-    Returns mean absolute SHAP values as importance scores.
+    Dispatches to the correct SHAP explainer based on model type:
+    - logistic_regression: LinearExplainer (fast, exact)
+    - xgboost: TreeExplainer (optimized for tree models)
 
     Args:
-        model: Fitted sklearn LogisticRegression model
+        model: Fitted model (LogisticRegression or XGBClassifier)
+        model_type: "logistic_regression" or "xgboost"
         X_train: Training feature matrix (used as background for explainer)
         X_test: Test feature matrix (to compute SHAP values on)
         feature_names: List of feature names in column order
@@ -39,9 +42,9 @@ def compute_shap_importance(
             - top_features: list of top 10 feature names by importance
 
     Notes:
-        - Uses LinearExplainer for efficiency with linear models
+        - LinearExplainer for logistic regression (exact)
+        - TreeExplainer for XGBoost (optimized for trees)
         - Mean absolute SHAP value represents average impact on predictions
-        - Top features are those with highest mean |SHAP| values
     """
     # Convert to numpy if needed
     if isinstance(X_train, pd.DataFrame):
@@ -54,8 +57,16 @@ def compute_shap_importance(
     else:
         X_test_array = X_test
 
-    # Create SHAP explainer with training data as background
-    explainer = shap.LinearExplainer(model, X_train_array)
+    # Create SHAP explainer based on model type
+    if model_type == "logistic_regression":
+        explainer = shap.LinearExplainer(model, X_train_array)
+    elif model_type == "xgboost":
+        explainer = shap.TreeExplainer(model)
+    else:
+        raise ValueError(
+            f"Unknown model_type: {model_type}. "
+            "Must be 'logistic_regression' or 'xgboost'."
+        )
 
     # Compute SHAP values on test set
     shap_values = explainer.shap_values(X_test_array)
@@ -82,6 +93,43 @@ def compute_shap_importance(
         "feature_names": feature_names,
         "top_features": top_features,
     }
+
+
+def compute_shap_importance(
+    model,
+    X_train: pd.DataFrame | np.ndarray,
+    X_test: pd.DataFrame | np.ndarray,
+    feature_names: list[str],
+) -> dict:
+    """Compute SHAP-based feature importance for a logistic regression model.
+
+    DEPRECATED: Use compute_shap_for_model() instead for model-agnostic support.
+    This function is kept for backward compatibility.
+
+    Uses SHAP LinearExplainer to compute feature attributions on test set.
+    Returns mean absolute SHAP values as importance scores.
+
+    Args:
+        model: Fitted sklearn LogisticRegression model
+        X_train: Training feature matrix (used as background for explainer)
+        X_test: Test feature matrix (to compute SHAP values on)
+        feature_names: List of feature names in column order
+
+    Returns:
+        Dictionary with keys:
+            - shap_values: numpy array (n_samples, n_features) of SHAP values
+            - feature_importance: dict mapping feature_name -> mean |SHAP|, sorted descending
+            - feature_names: list of feature names in order
+            - top_features: list of top 10 feature names by importance
+
+    Notes:
+        - Uses LinearExplainer for efficiency with linear models
+        - Mean absolute SHAP value represents average impact on predictions
+        - Top features are those with highest mean |SHAP| values
+    """
+    return compute_shap_for_model(
+        model, "logistic_regression", X_train, X_test, feature_names
+    )
 
 
 def plot_shap_summary(

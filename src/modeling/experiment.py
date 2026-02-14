@@ -12,10 +12,11 @@ from sklearn.metrics import log_loss, brier_score_loss, accuracy_score
 from sklearn.calibration import calibration_curve
 
 from src.modeling.config import ExperimentConfig
-from src.modeling.baseline import BaselineTrainer
+from src.modeling.baseline import create_trainer
 from src.modeling.evaluation import temporal_cross_validate, generate_evaluation_report
-from src.modeling.explainability import compute_shap_importance, plot_shap_summary, validate_game_mechanics_dominance
+from src.modeling.explainability import compute_shap_for_model, plot_shap_summary, validate_game_mechanics_dominance
 from src.modeling.calibration import serialize_model_to_json
+from src.modeling.thesis_validation import validate_thesis_hierarchy
 
 
 def compute_naive_baselines(y_true: np.ndarray | pd.Series) -> dict:
@@ -201,8 +202,8 @@ def run_experiment(
         - Creates: config.json, metrics.json, model.json, calibration_curve.png,
           prediction_distribution.png, feature_importance.png
     """
-    # 1. Create baseline trainer from config
-    trainer = BaselineTrainer(config.model)
+    # 1. Create trainer from config (model-agnostic factory)
+    trainer = create_trainer(config.model)
 
     # 2. Run temporal cross-validation
     cv_results = temporal_cross_validate(
@@ -236,8 +237,9 @@ def run_experiment(
         X_shap_train = X[:split_idx]
         X_shap_test = X[split_idx:]
 
-    shap_analysis = compute_shap_importance(
+    shap_analysis = compute_shap_for_model(
         trainer.model_,
+        config.model.model_type,
         X_shap_train,
         X_shap_test,
         feature_names,
@@ -248,20 +250,26 @@ def run_experiment(
         shap_analysis["feature_importance"]
     )
 
-    # 8. Validate calibration from CV predictions
+    # 8. Validate thesis hierarchy
+    thesis_validation = validate_thesis_hierarchy(
+        shap_analysis["feature_importance"],
+        feature_names,
+    )
+
+    # 9. Validate calibration from CV predictions
     calibration_validation = validate_calibration(
         cv_results["all_y_true"],
         cv_results["all_y_pred"],
     )
 
-    # 9. Generate evaluation report (creates experiment directory)
+    # 10. Generate evaluation report (creates experiment directory)
     experiment_dir = generate_evaluation_report(
         config,
         cv_results,
         config.output_dir,
     )
 
-    # 10. Add baseline metrics to saved metrics.json
+    # 11. Add baseline metrics and thesis validation to saved metrics.json
     metrics_path = experiment_dir / "metrics.json"
     with open(metrics_path, "r") as f:
         metrics_data = json.load(f)
@@ -281,11 +289,19 @@ def run_experiment(
         "game_mechanic_pct": game_mechanics_validation["game_mechanic_pct"],
         "top_10_features": game_mechanics_validation["top_10_features"],
     }
+    metrics_data["thesis_validation"] = {
+        "hierarchy_respected": thesis_validation["hierarchy_respected"],
+        "level_counts": thesis_validation["level_counts"],
+        "level_avg_importance": thesis_validation["level_avg_importance"],
+        "game_mechanics_pct": thesis_validation["game_mechanics_pct"],
+        "interpretation": thesis_validation["interpretation"],
+        "concerns": thesis_validation["concerns"],
+    }
 
     with open(metrics_path, "w") as f:
         json.dump(metrics_data, f, indent=2)
 
-    # 11. Generate SHAP plot
+    # 12. Generate SHAP plot
     shap_plot_path = experiment_dir / "feature_importance.png"
     plot_shap_summary(
         shap_analysis["shap_values"],
@@ -294,11 +310,11 @@ def run_experiment(
         shap_plot_path,
     )
 
-    # 12. Serialize model to JSON
+    # 13. Serialize model to JSON
     model_path = experiment_dir / "model.json"
     serialize_model_to_json(trainer, model_path)
 
-    # 13. Return comprehensive results
+    # 14. Return comprehensive results
     return {
         "experiment_id": config.experiment_id,
         "cv_results": cv_results,
@@ -307,6 +323,7 @@ def run_experiment(
         "beats_majority_class": beats_majority_class,
         "shap_analysis": shap_analysis,
         "game_mechanics_validation": game_mechanics_validation,
+        "thesis_validation": thesis_validation,
         "calibration_validation": calibration_validation,
         "experiment_dir": experiment_dir,
     }
