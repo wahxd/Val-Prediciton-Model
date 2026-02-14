@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-13)
 ## Current Position
 
 Phase: 10 of 10 (Advanced Model, Series Prediction & Retrain)
-Plan: 4 of 5 in phase (10-01, 10-02, 10-03, 10-05 complete; 10-04 remains)
-Status: In progress
-Last activity: 2026-02-14 — Completed 10-05-PLAN.md (Cross-tournament validation & recency weighting)
+Plan: 5 of 5 in phase (10-01, 10-02, 10-03, 10-04, 10-05 complete)
+Status: Phase complete
+Last activity: 2026-02-14 — Completed 10-04-PLAN.md (Hyperparameter tuning & experiment integration)
 
-Progress: [##########=-] 89% (v1 Phase 1 + v2 Phases 5-9 complete + Phase 10: 4/5 plans)
+Progress: [###########-] 100% (v1 Phase 1 + v2 Phases 5-10 complete)
 
 ## Previous Milestone (v1)
 
@@ -26,9 +26,9 @@ Progress: [##########=-] 89% (v1 Phase 1 + v2 Phases 5-9 complete + Phase 10: 4/
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 25
-- Average duration: 9.4 min
-- Total execution time: 3.92 hours
+- Total plans completed: 26
+- Average duration: 9.5 min
+- Total execution time: 4.04 hours
 
 **By Phase:**
 
@@ -40,7 +40,7 @@ Progress: [##########=-] 89% (v1 Phase 1 + v2 Phases 5-9 complete + Phase 10: 4/
 | 07-dataset-expansion | 3 | 133.9 min | 44.6 min |
 | 08-feature-engineering | 4 | 14.1 min | 3.5 min |
 | 09-baseline-model-evaluation | 3 | 13 min | 4.3 min |
-| 10-advanced-model-series-retrain | 4 | 14.2 min | 3.5 min |
+| 10-advanced-model-series-retrain | 5 | 21.2 min | 4.2 min |
 | quick tasks | 2 | 5 min | ~3 min |
 
 *Updated after each plan completion*
@@ -128,6 +128,12 @@ Recent decisions affecting current work:
 - Meta shift detected when cross-tournament top-10 overlap < 70% — Per CONTEXT, signals feature importance instability across tournaments (10-03)
 - Stable features appear in top-N across ALL tournaments — Trustworthy for betting edge, signal persists across metas (10-03)
 - Unstable features appear in SOME but not ALL tournaments — Signal may expire, recommend retraining when meta shifts (10-03)
+- Optuna parameter ranges match ModelConfig constraints — max_depth 2-4, n_estimators 30-100 for conservative regularization (10-04)
+- GridSearchCV uses LeaveOneGroupOut (series_id grouping) — Matches Phase 9 temporal CV strategy (10-04)
+- Temporal holdout validation: if tuned doesn't beat defaults on holdout, tuning was noise — 80/20 split prevents overfitting hyperparameters (10-04)
+- Model comparison requires XGBoost beat LR by > 1 SE AND calibration must not degrade — Conservative threshold avoids false positives (10-04)
+- Keep both models regardless of outcome — Future data may change ranking (10-04)
+- Thesis validation embedded in run_experiment — Saved to metrics.json under thesis_validation key for every experiment (10-04)
 - Leave-one-tournament-out CV is DIAGNOSTIC only — Not primary validation; mixed temporal training (pool all tournaments by date, walk-forward) is DEFAULT (10-05)
 - Tournament-level recency weights: 1.0, 0.7, 0.5, 0.3 for ≤5 tournaments — Meta shifts happen at tournament boundaries, exponential decay for >5 (10-05)
 - Three training strategies compared: Champions-only (first tournament only), mixed (all equal), recency-weighted (sample_weight) (10-05)
@@ -159,8 +165,8 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed 10-05-PLAN.md (Cross-tournament validation & recency weighting)
+Stopped at: Completed 10-04-PLAN.md (Hyperparameter tuning & experiment integration)
 Resume file: None
 
 ---
-*Next step: Phase 10 Plan 10-04 — Hyperparameter tuning (Optuna for XGBoost, GridSearchCV for logistic regression)*
+*Phase 10 COMPLETE — All v2 modeling phases finished. Ready for baseline experiments and cross-tournament validation.*
