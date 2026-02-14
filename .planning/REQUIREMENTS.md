@@ -68,11 +68,11 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 ### Model Training
 
 - [x] **MODL-01**: Logistic regression baseline with L2 regularization and 3-5 features (Elo differential, map win rate, starting side, score differential, economy tier)
-- [ ] **MODL-02**: XGBoost gradient boosting model with regularization constraints (max_depth=4, min_child_weight tuned for n=71)
+- [x] **MODL-02**: XGBoost gradient boosting model with regularization constraints (max_depth=4, min_child_weight tuned for n=71)
 - [x] **MODL-03**: Configuration-driven model training (ModelConfig specifies model type, hyperparameters, feature set name)
 - [x] **MODL-04**: Post-training probability calibration via Platt scaling (CalibratedClassifierCV)
 - [x] **MODL-05**: Model serialization using XGBoost native JSON format (not joblib/pickle)
-- [ ] **MODL-06**: Hyperparameter tuning via Optuna Bayesian optimization for XGBoost
+- [x] **MODL-06**: Hyperparameter tuning via Optuna Bayesian optimization for XGBoost
 - [x] **MODL-07**: SHAP feature importance analysis to validate model learns game mechanics (economy, momentum) not just team identity
 
 ### Evaluation
@@ -87,16 +87,16 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 
 ### Series Prediction
 
-- [ ] **SERS-01**: Compute BO3/BO5 series win probability from per-map win probabilities using combinatorial formula
-- [ ] **SERS-02**: Incorporate map veto data (which team picked which map) into per-map predictions where available
-- [ ] **SERS-03**: Series-level calibration validation (separate from map-level)
+- [x] **SERS-01**: Compute BO3/BO5 series win probability from per-map win probabilities using combinatorial formula
+- [~] **SERS-02**: Incorporate map veto data (which team picked which map) into per-map predictions where available — N/A (map veto data not available per CONTEXT decision; uses average of per-map probabilities)
+- [x] **SERS-03**: Series-level calibration validation (separate from map-level)
 
 ### Dataset Expansion
 
 - [x] **EXPN-01**: Process 30-50 additional VCT maps from other tournaments via modified Valoscribe pipeline
-- [ ] **EXPN-02**: Cross-tournament validation: train on Champions 2025, test on new tournament data
-- [ ] **EXPN-03**: Retrain model on expanded dataset and measure improvement in log loss and calibration
-- [ ] **EXPN-04**: Assess cross-tournament generalization gap (if >10pp accuracy drop, flag for investigation)
+- [x] **EXPN-02**: Cross-tournament validation: train on Champions 2025, test on new tournament data
+- [x] **EXPN-03**: Retrain model on expanded dataset and measure improvement in log loss and calibration
+- [x] **EXPN-04**: Assess cross-tournament generalization gap (if >10pp accuracy drop, flag for investigation)
 
 ## v3 Requirements (Deferred)
 
@@ -167,11 +167,11 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 | FEAT-07 | Phase 8 | Complete |
 | FEAT-08 | Phase 8 | Complete |
 | MODL-01 | Phase 9 | Complete |
-| MODL-02 | Phase 10 | Pending |
+| MODL-02 | Phase 10 | Complete |
 | MODL-03 | Phase 9 | Complete |
 | MODL-04 | Phase 9 | Complete |
 | MODL-05 | Phase 9 | Complete |
-| MODL-06 | Phase 10 | Pending |
+| MODL-06 | Phase 10 | Complete |
 | MODL-07 | Phase 9 | Complete |
 | EVAL-01 | Phase 9 | Complete |
 | EVAL-02 | Phase 9 | Complete |
@@ -180,13 +180,13 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 | EVAL-05 | Phase 9 | Complete |
 | EVAL-06 | Phase 9 | Complete |
 | EVAL-07 | Phase 9 | Complete |
-| SERS-01 | Phase 10 | Pending |
-| SERS-02 | Phase 10 | Pending |
-| SERS-03 | Phase 10 | Pending |
+| SERS-01 | Phase 10 | Complete |
+| SERS-02 | Phase 10 | N/A (data unavailable) |
+| SERS-03 | Phase 10 | Complete |
 | EXPN-01 | Phase 7 | Complete |
-| EXPN-02 | Phase 10 | Pending |
-| EXPN-03 | Phase 10 | Pending |
-| EXPN-04 | Phase 10 | Pending |
+| EXPN-02 | Phase 10 | Complete |
+| EXPN-03 | Phase 10 | Complete |
+| EXPN-04 | Phase 10 | Complete |
 
 **Coverage:**
 - v2 requirements: 40 total
@@ -203,4 +203,4 @@ Shelved requirements (STOR-01 through STOR-04, SESS-01 through SESS-04, META-01 
 
 ---
 *Requirements defined: 2026-02-13*
-*Last updated: 2026-02-14 — Phase 9 complete (MODL-01/03/04/05/07, EVAL-01 to EVAL-07)*
+*Last updated: 2026-02-14 — Phase 10 complete (MODL-02/06, SERS-01/03, EXPN-02/03/04; SERS-02 N/A)*
