@@ -115,7 +115,7 @@ Plans:
 - [ ] 06-05-PLAN.md -- Baseline backup, reprocessing 71 maps, before/after validation
 
 ### Phase 7: Dataset Expansion (VOD Processing)
-**Goal**: Start processing additional VCT VODs through the modified Valoscribe pipeline to expand the training dataset beyond 71 maps — this is the long-running bottleneck that runs in the background while Phases 8-9 execute
+**Goal**: Build a scraping + orchestration pipeline to discover VCT VODs from VLR.gg, process them through Valoscribe, and expand the training dataset beyond 71 maps -- runs in the background while Phases 8-9 execute
 
 **Depends on**: Phase 6 (requires modified Valoscribe with output adapter and ReplayDetector)
 
@@ -125,13 +125,15 @@ Plans:
   1. At least 30 additional VCT maps from a different tournament (not Champions 2025) are queued for processing via the modified Valoscribe pipeline
   2. Processing is running (or complete) in the background, with progress trackable (maps processed / maps total)
 
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (to be planned)
+- [ ] 07-01-PLAN.md -- Manifest module + VLR.gg event page discovery scraper
+- [ ] 07-02-PLAN.md -- Orchestrator + CLI scripts (expand_dataset.py, summarize_progress.py)
+- [ ] 07-03-PLAN.md -- End-to-end verification + queue 30+ maps for background processing
 
 ### Phase 8: Feature Engineering
-**Goal**: Transform Valoscribe event data into predictive features at three levels (round, map, match) with a feature registry that enables reproducible experiments — informed by ALL available data from the adapted Valoscribe output
+**Goal**: Transform Valoscribe event data into predictive features at three levels (round, map, match) with a feature registry that enables reproducible experiments -- informed by ALL available data from the adapted Valoscribe output
 
 **Depends on**: Phase 5 (requires parsed event data and quality-filtered map set); Phase 6 (requires knowledge of all available data fields)
 
@@ -203,7 +205,7 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 | 4. Metadata Auto-Detection | v1 | - | Shelved | - |
 | 5. Data Pipeline & Validation | v2 | 4/4 | Complete | 2026-02-13 |
 | 6. Valoscribe Adaptation | v2 | 0/5 | Planned | - |
-| 7. Dataset Expansion (VOD Processing) | v2 | 0/TBD | Not started | - |
+| 7. Dataset Expansion (VOD Processing) | v2 | 0/3 | Planned | - |
 | 8. Feature Engineering | v2 | 0/TBD | Not started | - |
 | 9. Baseline Model & Evaluation | v2 | 0/TBD | Not started | - |
 | 10. Advanced Model, Series Prediction & Retrain | v2 | 0/TBD | Not started | - |
@@ -215,4 +217,5 @@ Phase 10 uses expanded dataset from Phase 7 when available.
 *Phase 5 planned: 2026-02-13 (4 plans in 3 waves)*
 *Phase 5 complete: 2026-02-13 (4/4 plans, 5/5 must-haves verified, 44 tests)*
 *Phase 6 planned: 2026-02-13 (5 plans in 4 waves)*
+*Phase 7 planned: 2026-02-13 (3 plans in 3 waves)*
 *Last updated: 2026-02-13*
