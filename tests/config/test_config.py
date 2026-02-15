@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 from pydantic import ValidationError
 
-from src.modeling.config import ModelConfig, ExperimentConfig
+from src.config.modeling import ModelConfig, ExperimentConfig
 
 
 class TestModelConfig:

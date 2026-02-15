@@ -11,7 +11,7 @@ from src.modeling.evaluation import (
     temporal_cross_validate,
     generate_evaluation_report,
 )
-from src.modeling.config import ModelConfig, ExperimentConfig
+from src.config.modeling import ModelConfig, ExperimentConfig
 
 
 class TestComputeMetrics:

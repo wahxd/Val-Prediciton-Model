@@ -10,7 +10,7 @@ from src.scraping.vlr_events import (
     extract_match_id_from_url,
     discover_matches,
 )
-from src.scraping.manifest import ProcessingManifest, VODRecord
+from src.pipeline.manifest import ProcessingManifest, VODRecord
 
 
 def test_extract_match_id_from_url():

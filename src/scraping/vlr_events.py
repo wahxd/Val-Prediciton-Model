@@ -22,7 +22,7 @@ except ImportError:
     # Plan 02 handles adding Valoscribe to sys.path
     scrape_match = None
 
-from src.scraping.manifest import ProcessingManifest, VODRecord
+from src.pipeline.manifest import ProcessingManifest, VODRecord
 
 log = structlog.get_logger(__name__)
 

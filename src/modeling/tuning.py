@@ -13,7 +13,7 @@ from optuna.pruners import MedianPruner
 from sklearn.model_selection import GridSearchCV, LeaveOneGroupOut
 from sklearn.metrics import log_loss
 
-from src.modeling.config import ModelConfig
+from src.config.modeling import ModelConfig
 from src.modeling.baseline import create_trainer
 from src.modeling.evaluation import temporal_cross_validate
 

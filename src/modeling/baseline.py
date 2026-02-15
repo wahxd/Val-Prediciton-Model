@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from xgboost import XGBClassifier
 
-from src.modeling.config import ModelConfig
+from src.config.modeling import ModelConfig
 
 
 class BaselineTrainer:

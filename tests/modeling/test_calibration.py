@@ -15,7 +15,7 @@ from src.modeling.calibration import (
     serialize_model_to_json,
     load_model_from_json,
 )
-from src.modeling.config import ModelConfig
+from src.config.modeling import ModelConfig
 
 
 @pytest.fixture

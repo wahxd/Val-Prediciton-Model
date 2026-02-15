@@ -7,7 +7,7 @@ import tempfile
 from sklearn.datasets import make_classification
 
 from src.modeling.baseline import BaselineTrainer, XGBoostTrainer, create_trainer
-from src.modeling.config import ModelConfig
+from src.config.modeling import ModelConfig
 from src.modeling.calibration import (
     serialize_model_to_json,
     save_xgboost_model,

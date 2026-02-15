@@ -11,7 +11,7 @@ import pandas as pd
 from sklearn.metrics import log_loss, brier_score_loss, accuracy_score
 from sklearn.calibration import calibration_curve
 
-from src.modeling.config import ExperimentConfig
+from src.config.modeling import ExperimentConfig
 from src.modeling.baseline import create_trainer
 from src.modeling.evaluation import temporal_cross_validate, generate_evaluation_report
 from src.modeling.explainability import compute_shap_for_model, plot_shap_summary, validate_game_mechanics_dominance

@@ -5,7 +5,7 @@ import pytest
 from pathlib import Path
 from sklearn.datasets import make_classification
 
-from src.modeling.config import ModelConfig, ExperimentConfig
+from src.config.modeling import ModelConfig, ExperimentConfig
 from src.modeling.experiment import (
     compute_naive_baselines,
     validate_calibration,

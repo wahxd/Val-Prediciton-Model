@@ -14,7 +14,7 @@ from rich.table import Table
 
 from src.data.audit import generate_audit
 from src.data.catalog import DataCatalog
-from src.data.config import get_config
+from src.config.data import get_config
 from src.data.loader import load_all_maps
 
 logger = structlog.get_logger()

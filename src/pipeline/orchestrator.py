@@ -14,9 +14,8 @@ from pathlib import Path
 
 import structlog
 
-from src.scraping.config import ProcessingConfig
-from src.scraping.manifest import ProcessingManifest, VODRecord
-from src.scraping.vlr_events import VLREventScraper
+from src.config.processing import ProcessingConfig
+from src.pipeline.manifest import ProcessingManifest, VODRecord
 
 log = structlog.get_logger(__name__)
 
@@ -115,6 +114,9 @@ class VODOrchestrator:
         Returns:
             Count of new VODs added to manifest
         """
+        # Import here to avoid circular import (scraping -> pipeline -> scraping)
+        from src.scraping.vlr_events import VLREventScraper
+
         scraper = VLREventScraper(rate_limit_seconds=1.5)
 
         # Use the VLREventScraper's discover_vods method which handles

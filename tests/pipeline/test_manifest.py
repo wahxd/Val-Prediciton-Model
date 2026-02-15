@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from src.scraping.manifest import ProcessingManifest, VODRecord
+from src.pipeline.manifest import ProcessingManifest, VODRecord
 
 
 def test_create_empty_manifest(tmp_path):

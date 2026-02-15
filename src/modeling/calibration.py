@@ -15,7 +15,7 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.linear_model import LogisticRegression
 
 from src.modeling.baseline import BaselineTrainer, XGBoostTrainer
-from src.modeling.config import ModelConfig
+from src.config.modeling import ModelConfig
 
 
 def create_calibrated_model(

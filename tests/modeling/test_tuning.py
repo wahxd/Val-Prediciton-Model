@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from sklearn.datasets import make_classification
 
-from src.modeling.config import ModelConfig
+from src.config.modeling import ModelConfig
 from src.modeling.tuning import (
     tune_xgboost_optuna,
     tune_logistic_gridsearch,

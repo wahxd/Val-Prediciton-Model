@@ -17,7 +17,7 @@ from src.data.schemas import (
     parse_event,
     EVENT_TYPE_MAP,
 )
-from src.data.config import DataPipelineConfig, get_config
+from src.config.data import DataPipelineConfig, get_config
 
 
 # Fixtures directory
