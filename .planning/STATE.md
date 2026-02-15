@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-14)
 
 Milestone: v3 Scale Data & Validate at Volume
 Phase: 12 - Data Sourcing / VLR.gg Scraping
-Plan: 1 of 6 complete
+Plan: 3 of 6 complete
 Status: In progress
-Last activity: 2026-02-15 — Completed 12-01-PLAN.md (scraping infrastructure)
+Last activity: 2026-02-15 — Completed 12-03-PLAN.md (YouTube VOD finder)
 
-Progress: ██░░░░░░░░░░ 20% (1/5 phases complete, 1/6 plans in Phase 12)
+Progress: ██░░░░░░░░░░ 20% (1/5 phases complete, 3/6 plans in Phase 12)
 
 ## Shipped Milestones
 
@@ -32,14 +32,14 @@ Progress: ██░░░░░░░░░░ 20% (1/5 phases complete, 1/6 pla
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 29 (v1: 4, v2: 22, v3: 3)
-- Average duration: 9.2 min/plan
-- Total execution time: ~4.5 hours
+- Total plans completed: 30 (v1: 4, v2: 22, v3: 4)
+- Average duration: 8.3 min/plan
+- Total execution time: ~4.6 hours
 
 **v3 Progress:**
 - 5 phases (11-15)
 - 25 requirements
-- Completed: 1 phase (11), 6/25 requirements (CLEAN-01 through CLEAN-05, SCRP-01)
+- Completed: 1 phase (11), 7/25 requirements (CLEAN-01 through CLEAN-05, SCRP-01, SCRP-02)
 - Target: 150+ maps processed
 
 ## Accumulated Context
@@ -136,12 +136,20 @@ Progress: ██░░░░░░░░░░ 20% (1/5 phases complete, 1/6 pla
 - Hishel caching deferred (requires hishel[async] extra)
 - Impact: Foundation ready for VLR.gg scraping in 12-02+
 
+**YouTube VOD finder (Phase 12-03):**
+- YouTubeVODFinder: YouTube Data API v3 integration for map-specific VOD discovery
+- Validates video accessibility (public + processed status)
+- Quota tracking: 10,000 units/day limit, raises QuotaExhaustedError before exceeding
+- Search optimization: videoDuration='long' filter to exclude highlights (<20min)
+- Prefers VLR.gg URLs, falls back to YouTube search when missing/invalid
+- Impact: Fills missing per-map VOD links that VLR.gg pages lack
+
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: Completed 12-01-PLAN.md (scraping infrastructure)
-Next: Continue Phase 12 (Plan 12-02: VLR.gg Player Stats Scraper)
+Stopped at: Completed 12-03-PLAN.md (YouTube VOD finder)
+Next: Continue Phase 12 (Plan 12-04: VLR.gg Match Scraper Integration)
 Resume file: None
 
 ---
-*v3 Scale Data & Validate at Volume — Phase 12 in progress (1/6 plans complete).*
+*v3 Scale Data & Validate at Volume — Phase 12 in progress (3/6 plans complete).*
