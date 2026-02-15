@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-02-14)
 ## Current Position
 
 Milestone: v3 Scale Data & Validate at Volume
-Phase: 11 - Repo Cleanup & Organization
-Plan: 2 of 2 complete
-Status: Phase complete
-Last activity: 2026-02-14 — Completed 11-02-PLAN.md (module structure reorganization)
+Phase: 12 - Data Sourcing / VLR.gg Scraping
+Plan: 1 of 6 complete
+Status: In progress
+Last activity: 2026-02-15 — Completed 12-01-PLAN.md (scraping infrastructure)
 
-Progress: ██░░░░░░░░░░ 20% (1/5 phases complete)
+Progress: ██░░░░░░░░░░ 20% (1/5 phases complete, 1/6 plans in Phase 12)
 
 ## Shipped Milestones
 
@@ -32,14 +32,14 @@ Progress: ██░░░░░░░░░░ 20% (1/5 phases complete)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 28 (v1: 4, v2: 22, v3: 2)
-- Average duration: 9.5 min/plan
-- Total execution time: ~4.4 hours
+- Total plans completed: 29 (v1: 4, v2: 22, v3: 3)
+- Average duration: 9.2 min/plan
+- Total execution time: ~4.5 hours
 
 **v3 Progress:**
 - 5 phases (11-15)
 - 25 requirements
-- Completed: 1 phase (11), 5/25 requirements (CLEAN-01 through CLEAN-05)
+- Completed: 1 phase (11), 6/25 requirements (CLEAN-01 through CLEAN-05, SCRP-01)
 - Target: 150+ maps processed
 
 ## Accumulated Context
@@ -96,10 +96,14 @@ Progress: ██░░░░░░░░░░ 20% (1/5 phases complete)
 - Coverage: 25/25 requirements mapped (100%)
 
 **Stack additions:**
-- httpx for async VLR.gg scraping
-- pyrate-limiter for rate limiting (1 req/sec)
-- tqdm for progress visibility
-- SQLite for experiment tracking
+- httpx for async VLR.gg scraping (installed 12-01)
+- hishel for HTTP caching (installed 12-01, caching deferred until hishel[async])
+- pyrate-limiter for rate limiting (installed 12-01, 1 req/sec default)
+- google-api-python-client for YouTube Data API (installed 12-01)
+- rapidfuzz for team name normalization (installed 12-01)
+- pytest-asyncio for async test support (installed 12-01)
+- tqdm for progress visibility (planned)
+- SQLite for experiment tracking (planned)
 
 **Anti-decisions:**
 - NO Airflow/Prefect (unjustified overhead for 150 maps)
@@ -125,12 +129,19 @@ Progress: ██░░░░░░░░░░ 20% (1/5 phases complete)
 - Circular import resolved via lazy import in VODOrchestrator
 - Impact: Clean separation for Phase 12 (scraping) and Phase 13 (pipeline)
 
+**Scraping infrastructure (Phase 12-01):**
+- Async HTTP client with rate limiting (pyrate-limiter, 1 req/sec default)
+- Extended VODRecord: player_stats, agent_compositions, player_vlr_ids, match_score, match_outcome
+- TeamNormalizer: RapidFuzz fuzzy matching (>= 85 threshold), 30+ manual overrides
+- Hishel caching deferred (requires hishel[async] extra)
+- Impact: Foundation ready for VLR.gg scraping in 12-02+
+
 ## Session Continuity
 
-Last session: 2026-02-14
-Stopped at: Completed Phase 11 Plan 02 (module structure reorganization)
-Next: Start Phase 12 (Data Sourcing / VLR.gg Scraping)
+Last session: 2026-02-15
+Stopped at: Completed 12-01-PLAN.md (scraping infrastructure)
+Next: Continue Phase 12 (Plan 12-02: VLR.gg Player Stats Scraper)
 Resume file: None
 
 ---
-*v3 Scale Data & Validate at Volume — Phase 11 complete, ready for Phase 12.*
+*v3 Scale Data & Validate at Volume — Phase 12 in progress (1/6 plans complete).*
