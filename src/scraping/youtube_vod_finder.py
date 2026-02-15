@@ -132,17 +132,17 @@ class YouTubeVODFinder:
         """Validate that a video is accessible for download.
 
         Checks:
-        - Privacy status is "public"
+        - Privacy status is "public" or "unlisted" (both downloadable via yt-dlp)
         - Upload status is "processed"
 
-        Note: We don't check embeddable status because we download videos
-        via yt-dlp, not embed them.
+        Note: VCT match VODs are typically unlisted (accessible via playlist links
+        from VLR.gg). We accept both public and unlisted since yt-dlp can download them.
 
         Args:
             video_id: YouTube video ID
 
         Returns:
-            True if video is public and processed, False otherwise
+            True if video is public/unlisted and processed, False otherwise
         """
         self._check_quota(self.VALIDATE_COST)
         # Consume quota before making the call (it's consumed regardless of success/failure)
@@ -163,7 +163,7 @@ class YouTubeVODFinder:
             upload_status = status.get("uploadStatus", "")
 
             is_valid = (
-                privacy_status == "public" and
+                privacy_status in ("public", "unlisted") and
                 upload_status == "processed"
             )
 
@@ -232,14 +232,17 @@ class YouTubeVODFinder:
 
         # Add date filtering if provided
         if date:
-            # Parse date and create window: [date-7days, date+30days]
             from datetime import datetime, timedelta
-            match_date = datetime.strptime(date, "%Y-%m-%d")
-            published_after = (match_date - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
-            published_before = (match_date + timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-            search_params["publishedAfter"] = published_after
-            search_params["publishedBefore"] = published_before
+            try:
+                match_date = datetime.strptime(date, "%Y-%m-%d")
+                published_after = (match_date - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                published_before = (match_date + timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            except ValueError:
+                self._log.warning("invalid_date_format", date=date, skipping="date filter")
+                match_date = None
+            if match_date:
+                search_params["publishedAfter"] = published_after
+                search_params["publishedBefore"] = published_before
 
         try:
             # Execute search

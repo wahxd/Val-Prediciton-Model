@@ -190,14 +190,18 @@ class VLRMatchScraper:
         # Fallback: look for date text in match header
         header = soup.find('div', class_='match-header')
         if header:
-            # Date might be in a div with specific classes
             date_div = header.find('div', class_='moment-tz-convert')
             if date_div:
                 date_text = date_div.get_text(strip=True)
-                # Try to parse common formats
-                # This is best-effort; may need refinement based on actual VLR pages
                 if date_text:
-                    return date_text  # Return as-is for now
+                    # Try to parse common VLR.gg date formats to ISO
+                    from datetime import datetime as dt_cls
+                    for fmt in ("%B %d, %Y", "%b %d, %Y", "%Y-%m-%d"):
+                        try:
+                            return dt_cls.strptime(date_text, fmt).strftime('%Y-%m-%d')
+                        except ValueError:
+                            continue
+                    return date_text  # Return as-is if no format matches
 
         return ""
 

@@ -209,37 +209,13 @@ class TournamentScraper:
                     # Find accessible VOD URL
                     youtube_url = None
 
-                    # Step 1: Validate VLR.gg VOD URL if present
-                    if vlr_vod_url and self.youtube_finder and not youtube_quota_exhausted:
-                        video_id = self.youtube_finder.extract_video_id(vlr_vod_url)
-                        if video_id:
-                            try:
-                                # Validate via YouTube API (in thread to avoid blocking)
-                                is_valid = await asyncio.to_thread(
-                                    self.youtube_finder.validate_video,
-                                    video_id
-                                )
-                                if is_valid:
-                                    youtube_url = vlr_vod_url
-                                    log.debug(
-                                        "vlr_vod_validated",
-                                        vod_id=vod_id,
-                                        url=youtube_url
-                                    )
-                            except QuotaExhaustedError as e:
-                                log.warning(
-                                    "youtube_quota_exhausted",
-                                    quota_used=e.quota_used,
-                                    quota_limit=e.quota_limit,
-                                    action="Continuing with VLR URLs only"
-                                )
-                                youtube_quota_exhausted = True
-
-                    elif vlr_vod_url and not self.youtube_finder:
-                        # No YouTube API available, accept VLR URL as-is
+                    # Step 1: Trust VLR.gg VOD URL if present
+                    # VLR.gg URLs are curated community links — accept without
+                    # API validation to save quota for searching missing URLs.
+                    if vlr_vod_url:
                         youtube_url = vlr_vod_url
                         log.debug(
-                            "vlr_vod_accepted_without_validation",
+                            "vlr_vod_accepted",
                             vod_id=vod_id,
                             url=youtube_url
                         )
@@ -471,7 +447,7 @@ class TournamentScraper:
 
             # Warnings
             if stats["maps_with_vod"] < 80:
-                lines.append("⚠ WARNING: Fewer than 80 maps with VODs found")
+                lines.append("WARNING: Fewer than 80 maps with VODs found")
                 lines.append("  Suggestion: Add a third tournament to reach target")
                 lines.append("")
 
