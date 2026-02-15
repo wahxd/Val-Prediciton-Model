@@ -14,7 +14,11 @@ from pathlib import Path
 from typing import Literal
 
 
-StatusType = Literal["pending", "downloading", "processing", "complete", "failed", "skipped"]
+StatusType = Literal[
+    "pending", "downloading", "processing", "complete",
+    "failed", "skipped",
+    "download_failed", "processing_failed"
+]
 
 
 @dataclass
@@ -44,6 +48,7 @@ class VODRecord:
         player_vlr_ids: Mapping of player names to VLR.gg player IDs (optional)
         match_score: Series score in "2-1" format (optional)
         match_outcome: Map outcome "team1_win" or "team2_win" (optional)
+        quality_metrics: Quality validation results from QualityValidator (optional)
     """
     vod_id: str
     youtube_url: str
@@ -67,6 +72,7 @@ class VODRecord:
     player_vlr_ids: dict[str, int] | None = None
     match_score: str | None = None
     match_outcome: str | None = None
+    quality_metrics: dict | None = None  # Quality validation results from QualityValidator
 
 
 class ProcessingManifest:

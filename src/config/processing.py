@@ -33,6 +33,14 @@ class ProcessingConfig(BaseSettings):
     max_retries: int = 2
     delete_vod_after_processing: bool = True
 
+    # Batch processing
+    batch_size: int = 20  # Number of VODs to process per batch run
+    circuit_breaker_threshold: int = 5  # Stop after N consecutive failures
+    download_timeout_seconds: int = 1800  # 30 minutes per download
+
+    # Disk space
+    min_disk_space_gb: float = 10.0  # Minimum free disk space before starting batch
+
     class Config:
         env_prefix = "EXPANSION_"
         case_sensitive = False
