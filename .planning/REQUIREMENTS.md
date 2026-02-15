@@ -17,12 +17,12 @@ Requirements for v3 milestone: Scale Data & Validate at Volume.
 
 ### Data Sourcing
 
-- [ ] **SCRP-01**: Scrape VCT match results (teams, map scores, match outcomes) from VLR.gg
-- [ ] **SCRP-02**: Extract YouTube VOD links from VLR.gg match pages
-- [ ] **SCRP-03**: Extract player stats (ACS, K/D/A, KAST%, ADR, HS%, FK/FD) per map
-- [ ] **SCRP-04**: Extract agent compositions per map
-- [ ] **SCRP-05**: Rate-limited scraping with caching and resume capability
-- [ ] **SCRP-06**: Normalize team names across VLR.gg and Valoscribe data sources
+- [x] **SCRP-01**: Scrape VCT match results (teams, map scores, match outcomes) from VLR.gg
+- [x] **SCRP-02**: Extract YouTube VOD links from VLR.gg match pages
+- [x] **SCRP-03**: Extract player stats (ACS, K/D/A, KAST%, ADR, HS%, FK/FD) per map
+- [x] **SCRP-04**: Extract agent compositions per map
+- [x] **SCRP-05**: Rate-limited scraping with caching and resume capability
+- [x] **SCRP-06**: Normalize team names across VLR.gg and Valoscribe data sources
 
 ### VOD Processing
 
@@ -83,12 +83,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLEAN-03 | Phase 11 | Complete |
 | CLEAN-04 | Phase 11 | Complete |
 | CLEAN-05 | Phase 11 | Complete |
-| SCRP-01 | Phase 12 | Pending |
-| SCRP-02 | Phase 12 | Pending |
-| SCRP-03 | Phase 12 | Pending |
-| SCRP-04 | Phase 12 | Pending |
-| SCRP-05 | Phase 12 | Pending |
-| SCRP-06 | Phase 12 | Pending |
+| SCRP-01 | Phase 12 | Complete |
+| SCRP-02 | Phase 12 | Complete |
+| SCRP-03 | Phase 12 | Complete |
+| SCRP-04 | Phase 12 | Complete |
+| SCRP-05 | Phase 12 | Complete |
+| SCRP-06 | Phase 12 | Complete |
 | PROC-01 | Phase 13 | Pending |
 | PROC-02 | Phase 13 | Pending |
 | PROC-03 | Phase 13 | Pending |
@@ -112,4 +112,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 ---
 *Requirements defined: 2026-02-14*
 *Traceability updated: 2026-02-14*
-*Last updated: 2026-02-14*
+*Last updated: 2026-02-15*

@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-14)
 
 Milestone: v3 Scale Data & Validate at Volume
 Phase: 12 - Data Sourcing / VLR.gg Scraping
-Plan: 4 of 6 complete
-Status: In progress
+Plan: 4 of 4 complete
+Status: Phase complete
 Last activity: 2026-02-15 — Completed 12-04-PLAN.md (Tournament scraper integration)
 
-Progress: ███░░░░░░░░░ 24% (1/5 phases complete, 4/6 plans in Phase 12)
+Progress: ████░░░░░░░░ 40% (2/5 phases complete)
 
 ## Shipped Milestones
 
@@ -32,14 +32,14 @@ Progress: ███░░░░░░░░░ 24% (1/5 phases complete, 4/6 pla
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 31 (v1: 4, v2: 22, v3: 5)
-- Average duration: 8.3 min/plan
-- Total execution time: ~4.75 hours
+- Total plans completed: 32 (v1: 4, v2: 22, v3: 6)
+- Average duration: 8.2 min/plan
+- Total execution time: ~4.8 hours
 
 **v3 Progress:**
 - 5 phases (11-15)
 - 25 requirements
-- Completed: 1 phase (11), 10/25 requirements (CLEAN-01 through CLEAN-05, SCRP-01 through SCRP-04, partial SCRP-05)
+- Completed: 2 phases (11, 12), 11/25 requirements (CLEAN-01 through CLEAN-05, SCRP-01 through SCRP-06)
 - Target: 150+ maps processed
 
 ## Accumulated Context
@@ -74,7 +74,6 @@ Progress: ███░░░░░░░░░ 24% (1/5 phases complete, 4/6 pla
 ### Pending Todos
 
 - Process 169 queued VODs through Valoscribe (~127hr processing time at 45min/map)
-- Complete Phase 12 scraping (Plans 12-05, 12-06: roster scraper + final integration)
 - Validate Valoscribe CLI interface for batch processing (Phase 13)
 - Run real-data experiments on 150+ map dataset (Phase 14)
 
@@ -166,9 +165,9 @@ Progress: ███░░░░░░░░░ 24% (1/5 phases complete, 4/6 pla
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: Completed 12-04-PLAN.md (Tournament scraper integration)
-Next: Continue Phase 12 (Plan 12-05: VLR.gg Team Roster Scraper, Plan 12-06: Final Integration)
+Stopped at: Completed Phase 12 (all 4 plans)
+Next: Phase 13 — VOD Processing Pipeline
 Resume file: None
 
 ---
-*v3 Scale Data & Validate at Volume — Phase 12 in progress (4/6 plans complete).*
+*v3 Scale Data & Validate at Volume — Phase 12 complete, ready for Phase 13.*

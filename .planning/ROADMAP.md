@@ -58,7 +58,7 @@ Plans:
 
 ---
 
-### Phase 12: Data Sourcing / VLR.gg Scraping
+### Phase 12: Data Sourcing / VLR.gg Scraping ✓
 
 **Goal:** VLR.gg scraper retrieves match metadata and VOD links for 80-100 additional maps.
 
@@ -66,13 +66,15 @@ Plans:
 
 **Requirements:** SCRP-01, SCRP-02, SCRP-03, SCRP-04, SCRP-05, SCRP-06
 
-**Plans:** 4 plans
+**Plans:** 4/4 complete
 
 Plans:
-- [ ] 12-01-PLAN.md -- Install dependencies, async HTTP client, extended VODRecord, TeamNormalizer
-- [ ] 12-02-PLAN.md -- Rewrite VLR.gg scraping (async httpx + Hishel + stats extraction)
-- [ ] 12-03-PLAN.md -- YouTube Data API v3 VOD discovery and validation
-- [ ] 12-04-PLAN.md -- End-to-end tournament scraping, manifest population (80-100 maps)
+- [x] 12-01-PLAN.md -- Install dependencies, async HTTP client, extended VODRecord, TeamNormalizer
+- [x] 12-02-PLAN.md -- Rewrite VLR.gg scraping (async httpx + Hishel + stats extraction)
+- [x] 12-03-PLAN.md -- YouTube Data API v3 VOD discovery and validation
+- [x] 12-04-PLAN.md -- End-to-end tournament scraping, manifest population (169 maps)
+
+**Completed:** 2026-02-15
 
 **Success Criteria:**
 1. VLREventScraper extracts match results (teams, map scores, outcomes) from VLR.gg tournament pages
@@ -153,7 +155,7 @@ Plans:
 | 9. Baseline Model & Evaluation | v2 | 3/3 | Complete | 2026-02-14 |
 | 10. Advanced Model, Series Prediction & Retrain | v2 | 5/5 | Complete | 2026-02-14 |
 | 11. Repo Cleanup & Organization | v3 | 2/2 | Complete | 2026-02-14 |
-| 12. Data Sourcing / VLR.gg Scraping | v3 | 0/4 | Planned | - |
+| 12. Data Sourcing / VLR.gg Scraping | v3 | 4/4 | Complete | 2026-02-15 |
 | 13. VOD Processing Pipeline | v3 | 0/? | Pending | - |
 | 14. Scaled Experiments | v3 | 0/? | Pending | - |
 | 15. Model Iteration | v3 | 0/? | Pending | - |
