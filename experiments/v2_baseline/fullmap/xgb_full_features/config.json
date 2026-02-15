@@ -1,8 +1,8 @@
 {
-  "experiment_id": "real_xgb_core",
+  "experiment_id": "xgb_full_features",
   "model": {
     "model_type": "xgboost",
-    "feature_set": "core",
+    "feature_set": "full",
     "C": 1.0,
     "penalty": "l2",
     "solver": "lbfgs",
@@ -20,5 +20,5 @@
   "calibration_method": "sigmoid",
   "calibration_cv": 3,
   "cv_strategy": "leave_one_series_out",
-  "output_dir": "experiments"
+  "output_dir": "experiments/v2_baseline/fullmap/xgb_full_features"
 }

@@ -1,7 +1,7 @@
 {
-  "experiment_id": "checkpoint_r6_lr",
+  "experiment_id": "xgb_core_features",
   "model": {
-    "model_type": "logistic_regression",
+    "model_type": "xgboost",
     "feature_set": "core",
     "C": 1.0,
     "penalty": "l2",
@@ -20,5 +20,5 @@
   "calibration_method": "sigmoid",
   "calibration_cv": 3,
   "cv_strategy": "leave_one_series_out",
-  "output_dir": "experiments"
+  "output_dir": "experiments/v2_baseline/fullmap/xgb_core_features"
 }

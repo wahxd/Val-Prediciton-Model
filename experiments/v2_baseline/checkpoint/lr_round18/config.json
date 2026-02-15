@@ -1,5 +1,5 @@
 {
-  "experiment_id": "checkpoint_r18_lr",
+  "experiment_id": "lr_round18",
   "model": {
     "model_type": "logistic_regression",
     "feature_set": "core",
@@ -20,5 +20,5 @@
   "calibration_method": "sigmoid",
   "calibration_cv": 3,
   "cv_strategy": "leave_one_series_out",
-  "output_dir": "experiments"
+  "output_dir": "experiments/v2_baseline/checkpoint/lr_round18"
 }
