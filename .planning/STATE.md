@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-14)
 
 Milestone: v3 Scale Data & Validate at Volume
 Phase: 12 - Data Sourcing / VLR.gg Scraping
-Plan: 3 of 6 complete
+Plan: 4 of 6 complete
 Status: In progress
-Last activity: 2026-02-15 — Completed 12-03-PLAN.md (YouTube VOD finder)
+Last activity: 2026-02-15 — Completed 12-04-PLAN.md (Tournament scraper integration)
 
-Progress: ██░░░░░░░░░░ 20% (1/5 phases complete, 3/6 plans in Phase 12)
+Progress: ███░░░░░░░░░ 24% (1/5 phases complete, 4/6 plans in Phase 12)
 
 ## Shipped Milestones
 
@@ -32,14 +32,14 @@ Progress: ██░░░░░░░░░░ 20% (1/5 phases complete, 3/6 pla
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 30 (v1: 4, v2: 22, v3: 4)
+- Total plans completed: 31 (v1: 4, v2: 22, v3: 5)
 - Average duration: 8.3 min/plan
-- Total execution time: ~4.6 hours
+- Total execution time: ~4.75 hours
 
 **v3 Progress:**
 - 5 phases (11-15)
 - 25 requirements
-- Completed: 1 phase (11), 7/25 requirements (CLEAN-01 through CLEAN-05, SCRP-01, SCRP-02)
+- Completed: 1 phase (11), 10/25 requirements (CLEAN-01 through CLEAN-05, SCRP-01 through SCRP-04, partial SCRP-05)
 - Target: 150+ maps processed
 
 ## Accumulated Context
@@ -73,19 +73,20 @@ Progress: ██░░░░░░░░░░ 20% (1/5 phases complete, 3/6 pla
 
 ### Pending Todos
 
-- Process 46 queued VODs through Valoscribe (~15-20hr processing time)
-- Reprocess 71 Champions maps to verify VSCR-03/04 (can combine with VOD processing in Phase 13)
-- Build VLR.gg scraper infrastructure (Phase 12)
+- Process 169 queued VODs through Valoscribe (~127hr processing time at 45min/map)
+- Complete Phase 12 scraping (Plans 12-05, 12-06: roster scraper + final integration)
 - Validate Valoscribe CLI interface for batch processing (Phase 13)
+- Run real-data experiments on 150+ map dataset (Phase 14)
 
 ### Blockers/Concerns
 
 - Framework validated on synthetic data only; real-data results are unknown
-- 46 VODs queued but not yet processed (15-20hr processing time)
-- VSCR-03/04 operationally unverified (folded into VOD processing)
+- 169 VODs queued but not yet processed (~127hr processing time)
+- 40 maps skipped due to missing YouTube URLs (19.1% of maps found)
 - VLR.gg scraping: site structure may change, need to handle rate limiting
 - VOD availability decay: YouTube videos may be deleted/privatized (process within 48hr of scraping)
 - ReplayDetector may fail on older tournaments with degraded video quality
+- Processing time: 169 maps × 45min = ~127 hours (recommend batch processing)
 
 ### Key Decisions
 
@@ -102,8 +103,8 @@ Progress: ██░░░░░░░░░░ 20% (1/5 phases complete, 3/6 pla
 - google-api-python-client for YouTube Data API (installed 12-01)
 - rapidfuzz for team name normalization (installed 12-01)
 - pytest-asyncio for async test support (installed 12-01)
-- tqdm for progress visibility (planned)
-- SQLite for experiment tracking (planned)
+- tqdm for progress visibility (planned for Phase 13)
+- SQLite for experiment tracking (planned for Phase 14)
 
 **Anti-decisions:**
 - NO Airflow/Prefect (unjustified overhead for 150 maps)
@@ -124,7 +125,7 @@ Progress: ██░░░░░░░░░░ 20% (1/5 phases complete, 3/6 pla
 **Module structure reorganization (Phase 11-02):**
 - src/ has 6 packages: config, data, features, modeling, pipeline, scraping
 - src/config/ centralizes all *Config classes (data, modeling, processing)
-- src/scraping/ contains only VLR.gg web scraping (VLREventScraper)
+- src/scraping/ contains VLR.gg web scraping (VLREventScraper, VLRMatchScraper, TournamentScraper, YouTubeVODFinder)
 - src/pipeline/ contains VOD processing orchestration (manifest, orchestrator)
 - Circular import resolved via lazy import in VODOrchestrator
 - Impact: Clean separation for Phase 12 (scraping) and Phase 13 (pipeline)
@@ -145,18 +146,29 @@ Progress: ██░░░░░░░░░░ 20% (1/5 phases complete, 3/6 pla
 
 **YouTube VOD finder (Phase 12-03):**
 - YouTubeVODFinder: YouTube Data API v3 integration for map-specific VOD discovery
-- Validates video accessibility (public + processed status)
+- Validates video accessibility (public + unlisted + processed status)
 - Quota tracking: 10,000 units/day limit, raises QuotaExhaustedError before exceeding
 - Search optimization: videoDuration='long' filter to exclude highlights (<20min)
 - Prefers VLR.gg URLs, falls back to YouTube search when missing/invalid
 - Impact: Fills missing per-map VOD links that VLR.gg pages lack
 
+**Tournament scraper integration (Phase 12-04):**
+- TournamentScraper: Wires VLREventScraper + YouTubeVODFinder + ProcessingManifest
+- CLI script: scripts/scrape_tournaments.py for automated tournament scraping
+- 169 VODRecords populated: Masters Bangkok 2024 (83 maps), VCT Americas 2024 Stage 1 (86 maps)
+- All records have: player_stats, agent_compositions, player_vlr_ids, match_score, match_outcome
+- YouTube API quota used: 0 (VLR.gg URLs trusted directly without validation)
+- 40 maps skipped (19.1%) due to missing YouTube URLs on VLR.gg pages
+- VLR.gg date parsing: Converts "Month DD, YYYY" text to ISO "YYYY-MM-DD"
+- Accepts unlisted YouTube VODs (event organizers often upload as unlisted)
+- Impact: Manifest ready for Phase 13 VOD processing pipeline
+
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: Completed 12-03-PLAN.md (YouTube VOD finder)
-Next: Continue Phase 12 (Plan 12-04: VLR.gg Match Scraper Integration)
+Stopped at: Completed 12-04-PLAN.md (Tournament scraper integration)
+Next: Continue Phase 12 (Plan 12-05: VLR.gg Team Roster Scraper, Plan 12-06: Final Integration)
 Resume file: None
 
 ---
-*v3 Scale Data & Validate at Volume — Phase 12 in progress (3/6 plans complete).*
+*v3 Scale Data & Validate at Volume — Phase 12 in progress (4/6 plans complete).*
