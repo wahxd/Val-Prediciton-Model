@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-02-14)
 
 Milestone: v3 Scale Data & Validate at Volume
 Phase: 13 - VOD Processing Pipeline
-Plan: 1 of 3 complete
+Plan: 2 of 3 complete
 Status: In progress
-Last activity: 2026-02-15 — Completed 13-01-PLAN.md (Manifest & config extensions)
+Last activity: 2026-02-15 — Completed 13-02-PLAN.md (BatchProcessor with tqdm, circuit breaker, tournament ordering)
 
 Progress: ████░░░░░░░░ 40% (2/5 phases complete)
 
@@ -32,14 +32,14 @@ Progress: ████░░░░░░░░ 40% (2/5 phases complete)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 33 (v1: 4, v2: 22, v3: 7)
-- Average duration: 7.9 min/plan
-- Total execution time: ~4.9 hours
+- Total plans completed: 34 (v1: 4, v2: 22, v3: 8)
+- Average duration: 7.8 min/plan
+- Total execution time: ~4.95 hours
 
 **v3 Progress:**
 - 5 phases (11-15)
 - 25 requirements
-- Completed: 2 phases (11, 12), 13/25 requirements (CLEAN-01 through CLEAN-05, SCRP-01 through SCRP-06, PROC-04, PROC-05)
+- Completed: 2 phases (11, 12), 16/25 requirements (CLEAN-01 through CLEAN-05, SCRP-01 through SCRP-06, PROC-01 through PROC-06)
 - Target: 150+ maps processed
 
 ## Accumulated Context
@@ -170,12 +170,22 @@ Progress: ████░░░░░░░░ 40% (2/5 phases complete)
 - JSON-serializable metrics dict enables Phase 14 filtering by quality tier
 - Impact: Foundation ready for BatchProcessor (13-02) and CLI (13-03)
 
+**Batch processing engine (Phase 13-02):**
+- BatchProcessor replaces VODOrchestrator.run_pipeline() as primary processing loop
+- tqdm progress bars show current VOD, tournament, teams, and ETA
+- Circuit breaker stops after 5 consecutive failures (prevents wasted processing time)
+- Tournament ordering: processes all maps from one tournament before starting next
+- Quality validation runs after each successful VOD, stores metrics in manifest
+- Partial output cleanup: removes incomplete Valoscribe files on processing failure
+- Granular failure statuses in VODOrchestrator: download_failed vs processing_failed
+- Impact: Ready for CLI wrapper (13-03), ready to process 169 VODs
+
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: Completed 13-01-PLAN.md (Manifest & config extensions)
-Next: 13-02 — BatchProcessor implementation
+Stopped at: Completed 13-02-PLAN.md (BatchProcessor with tqdm, circuit breaker, tournament ordering)
+Next: 13-03 — Batch processing CLI
 Resume file: None
 
 ---
-*v3 Scale Data & Validate at Volume — Phase 13 in progress (1/3 plans complete).*
+*v3 Scale Data & Validate at Volume — Phase 13 in progress (2/3 plans complete).*
