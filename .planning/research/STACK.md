@@ -1,478 +1,377 @@
 # Technology Stack
 
-**Project:** Valorant VCT Event Detection & Logging
-**Researched:** 2026-02-12
-**Research Mode:** Stack dimension (subsequent milestone)
-**Overall Confidence:** MEDIUM (based on training data; verification needed with Context7/official docs)
+**Project:** Val-Prediction-Model v3 Data Scaling
+**Researched:** 2026-02-14
+**Confidence:** HIGH
 
 ## Executive Summary
 
-This stack extends the existing Python CV pipeline (OpenCV + pytesseract + streamlink) with event detection, persistent storage, and enhanced OCR capabilities. Recommendations prioritize:
-- **Incremental adoption** - extend existing stack, don't replace
-- **Windows 11 compatibility** - avoid Unix-only dependencies
-- **Local-first storage** - SQLite for structured events, no cloud dependencies
-- **Training data collection focus** - storage optimized for ML pipeline consumption
+v3 adds three new capabilities to the existing prediction framework: VLR.gg web scraping, scaled VOD processing (150+ maps), and large-scale experiment orchestration. The stack additions are minimal and focused:
 
-**Critical recommendation:** Replace pytesseract with EasyOCR for better accuracy on game overlay text without Tesseract installation complexity on Windows.
+- **Web scraping:** BeautifulSoup4 + lxml + httpx (already have BS4/lxml, add httpx)
+- **Rate limiting:** pyrate-limiter for VLR.gg politeness
+- **Progress tracking:** tqdm for long-running VOD processing visibility
+- **Experiment orchestration:** Built-in concurrent.futures + joblib (already have joblib via sklearn)
+- **Local tracking:** SQLite (stdlib) for experiment metadata, no MLflow needed yet
 
----
+**Anti-recommendation:** Do NOT add heavyweight orchestration (Airflow, Prefect, Metaflow). The scale (150 maps, 4-8 experiments) does not justify orchestration complexity. Use simple Python multiprocessing.
 
-## Recommended Stack
+## Recommended Stack Additions
 
-### OCR Engine (CRITICAL UPGRADE)
+### Web Scraping (VLR.gg)
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **EasyOCR** | 1.7.x+ | Game overlay text extraction (team names, agent names, map names) | Better accuracy than pytesseract on stylized game fonts, GPU-accelerated, no external Tesseract binary needed on Windows |
+| Library | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| httpx | 0.28.1 | Async HTTP client | Modern requests alternative with async support for concurrent scraping; sync/async APIs |
+| pyrate-limiter | 4.0.2 | Rate limiting | Leaky bucket algorithm, prevents request flooding; VLR.gg has no robots.txt but community recommends 1 req/sec |
+| tqdm | 4.67.3 | Progress bars | Visual feedback for long VOD processing batches; 60ns overhead, no dependencies |
+
+**Already installed (requirements.txt lines 16-18):**
+- beautifulsoup4 >= 4.13 (current: 4.14.3)
+- lxml >= 5.0 (current: 6.0.2)
+- requests >= 2.32
 
 **Rationale:**
-- pytesseract requires separate Tesseract installation (friction on Windows)
-- Game overlays use custom fonts that Tesseract struggles with
-- EasyOCR trained on synthetic data, handles stylized text better
-- GPU acceleration via PyTorch (critical for real-time processing)
-- Better bounding box detection for multi-region extraction
+- **httpx over requests:** Async support enables concurrent VLR.gg page fetching (match pages, player stats, VOD links) without blocking. Both sync and async APIs mean gradual migration path.
+- **pyrate-limiter over ratelimit:** More recent (Jan 2026 release), production-stable, supports multiple rate limits (e.g., 1/sec + 100/min).
+- **BeautifulSoup over Scrapy:** VLR.gg scraping is ~100-200 pages (match results + metadata), not thousands. BS4 simplicity wins over Scrapy's learning curve for this scale.
+- **lxml parser:** Already installed. Fastest BS4 parser, recommended for production.
 
-**Confidence:** MEDIUM (requires verification of current version and Windows GPU support)
+### Progress Tracking
 
-**Installation:**
-```bash
-pip install easyocr
+| Library | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| tqdm | 4.67.3 | Progress bars | VOD processing runs 15-20 hours; tqdm provides ETA, no dependencies, works with joblib |
+
+**Integration:** Wrap joblib.Parallel with tqdm for per-VOD progress during batch processing.
+
+### Parallel Processing
+
+**No new libraries needed.** Use existing stack:
+
+| Library | Version | Purpose | Status |
+|---------|---------|---------|--------|
+| joblib | 1.5.3 (transitive from sklearn) | Parallel map processing | Already installed via scikit-learn |
+| concurrent.futures | stdlib | Experiment orchestration | Built into Python 3.11 |
+
+**Rationale:**
+- **joblib for VOD processing:** Already installed. Loky backend bypasses GIL, 6-10x speedup on CPU-bound tasks. Excellent for parallelizing Valoscribe VOD processing (independent map processing).
+- **concurrent.futures for experiments:** ThreadPoolExecutor for I/O-bound experiment result aggregation, ProcessPoolExecutor for CPU-bound model training. No external dependencies.
+- **Why NOT Metaflow/Airflow/Prefect:** Orchestration overhead unjustified. 150 maps = ~20 hours of embarrassingly parallel processing. 4-8 experiments = simple loop. No DAG complexity, no scheduling, no distributed compute.
+
+### Experiment Tracking
+
+**Use SQLite (stdlib), NOT MLflow.**
+
+| Library | Version | Purpose | Why |
+|---------|---------|---------|--------|
+| sqlite3 | stdlib (SQLite 3.51.2) | Experiment metadata | Built-in, local-first, 150 maps = ~1MB database |
+
+**Schema:**
+```sql
+-- experiments table: config, timestamp, status
+-- results table: experiment_id, metric, value
+-- artifacts table: experiment_id, file_path
 ```
 
-**Alternative considered:**
-- **PaddleOCR**: Strong accuracy but heavier dependencies, less Windows-friendly
-- **pytesseract**: Already in stack, but insufficient for game overlay text
-
----
-
-### Event Storage & Logging
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **SQLite** | 3.40+ (via Python stdlib) | Primary event storage | Zero-config, ACID transactions, excellent query performance for training data retrieval |
-| **SQLAlchemy** | 2.0.x+ | ORM & schema migration | Type-safe models, migration support via Alembic, simplifies event schema evolution |
-| **Alembic** | 1.13.x+ | Database migrations | Schema versioning as features evolve |
-
 **Rationale:**
-- SQLite is built into Python, no server setup
-- ACID guarantees prevent data loss during stream interruptions
-- Indexing on timestamps enables efficient temporal queries for ML training
-- SQLAlchemy provides migration path if scaling to PostgreSQL later
-- Local-first aligns with project constraints
+- **SQLite over MLflow:** MLflow adds dependencies (Flask, gunicorn, SQLAlchemy, protobuf). Experiment tracking needs: (1) metadata persistence, (2) comparison queries. SQLite handles both with zero dependencies.
+- **When to add MLflow:** If v4 adds live trading and needs model registry + versioning + deployment tracking. Not needed for v3 (validating edge on historical data).
+- **DVC:** Deferred. DVC excels at GB+ dataset versioning. Valoscribe JSONL is ~50-100MB total. Git LFS would suffice if versioning needed, but v3 focuses on expanding dataset, not versioning iterations.
 
-**Confidence:** HIGH (SQLite is stable, well-documented, proven for this use case)
+## Stack Already Installed
 
-**Schema suggestion:**
-```python
-# events table
-- id (int, primary key)
-- event_type (str) # 'round_start', 'team_win', 'agent_select', etc.
-- timestamp (float) # epoch time
-- stream_timestamp (str) # VOD timestamp for debugging
-- confidence (float) # CV detection confidence
-- data (JSON) # event-specific payload
-- frame_hash (str) # for deduplication
-```
+From requirements.txt (validated capabilities, DO NOT change):
 
-**Why NOT Parquet:**
-- Parquet is columnar, optimized for batch analytics
-- Poor for incremental writes (live stream scenario)
-- No transaction safety
-- Use case: export to Parquet for ML training, store in SQLite
+### Core ML/Data Science
 
-**Why NOT JSONL:**
-- No query capabilities (must read entire file)
-- No indexing
-- No schema enforcement
-- Use case: debugging/logging, not primary storage
+| Library | Version | Purpose | v3 Usage |
+|---------|---------|---------|----------|
+| scikit-learn | (installed) | Logistic regression, CV | Existing model pipeline |
+| xgboost | >= 3.0 | Gradient boosting | Existing model pipeline |
+| optuna | >= 3.0 | Bayesian hyperparameter tuning | Ablation studies |
+| pandas | (installed) | DataFrame operations | Feature engineering |
+| numpy | (installed) | Numerical computing | Feature engineering |
+| scipy | >= 1.11 | Statistical functions | Evaluation metrics |
+| shap | >= 0.45.0 | Model explainability | SHAP importance |
+| matplotlib | >= 3.8.0 | Visualization | Calibration plots |
 
----
+### Data Processing
 
-### State Change Detection
+| Library | Version | Purpose | v3 Usage |
+|---------|---------|---------|----------|
+| pydantic | >= 2.0 | Data validation | Schema validation |
+| pyarrow | >= 10.0 | Fast serialization | (unused in v3, can remove) |
 
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **python-statemachine** | 2.1.x+ | State machine for game phases | Explicit state transitions (menu → agent_select → in_game → post_round), prevents invalid state changes |
-| **deepdiff** | 6.7.x+ | State diffing for complex objects | Detect changes in agent compositions, team rosters without manual field comparison |
+### VOD Processing (Valoscribe)
 
-**Rationale:**
-- **python-statemachine**: Game state follows predictable FSM (finite state machine)
-  - Prevents logging impossible transitions (e.g., post_round → agent_select without round_end)
-  - Built-in event callbacks for state entry/exit
-  - Visualizable state diagrams for debugging
+| Library | Version | Purpose | v3 Usage |
+|---------|---------|---------|----------|
+| streamlink | (installed, latest: 8.2.0) | VOD streaming | Valoscribe VOD download |
+| opencv-python | (installed) | Frame extraction | Valoscribe OCR pipeline |
+| pytesseract | (installed) | OCR | Valoscribe text detection |
 
-- **deepdiff**: OCR results are nested dicts (teams, agents, scores)
-  - Computes semantic diffs, not just `==` comparison
-  - Returns what changed, simplifies event payload construction
-  - Handles missing keys gracefully (OCR might fail on some frames)
+### Utilities
 
-**Confidence:** MEDIUM (requires verification of Windows compatibility and current API)
-
-**Alternative pattern:**
-Simple dict hashing for lightweight state tracking:
-```python
-import hashlib
-import json
-
-def state_hash(state_dict):
-    return hashlib.md5(json.dumps(state_dict, sort_keys=True).encode()).hexdigest()
-```
-Use when full state machine overhead isn't needed.
-
----
-
-### Timestamp Synchronization
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **Built-in time module** | stdlib | System timestamps | Sufficient for single-stream processing |
-| **timecode** | 1.4.x+ | SMPTE timecode parsing | If stream provides timecodes, convert to frame-accurate timestamps |
-
-**Rationale:**
-- VCT broadcasts don't provide embedded timecodes, use system time
-- Store both epoch timestamp (for sorting/querying) and stream offset (for VOD replay)
-- `timecode` library useful if parsing VOD metadata later
-
-**Confidence:** HIGH (standard practice for stream processing)
-
-**Timestamp strategy:**
-```python
-import time
-
-event = {
-    'timestamp': time.time(),  # epoch, for DB queries
-    'stream_offset': current_frame / fps,  # relative to stream start
-    'frame_number': current_frame  # for debugging
-}
-```
-
----
-
-### Frame Processing Pipeline
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **OpenCV (cv2)** | 4.9.x+ | Frame capture & preprocessing | Already in stack, keep |
-| **NumPy** | 1.26.x+ | Array operations | Already in stack, keep |
-| **scikit-image** | 0.22.x+ | Advanced preprocessing (denoising, contrast) | Better than OpenCV for adaptive preprocessing before OCR |
-| **imutils** | 0.5.x+ | Convenience wrappers for OpenCV | Simplifies common operations (resize, rotate, etc.) |
-
-**Rationale:**
-- Keep existing OpenCV pipeline
-- Add scikit-image for OCR preprocessing (CLAHE, bilateral filtering improve text detection)
-- imutils reduces boilerplate
-
-**Confidence:** HIGH (well-established Python CV ecosystem)
-
-**Preprocessing pipeline for OCR:**
-```python
-import cv2
-from skimage import exposure
-
-def preprocess_for_ocr(frame, region):
-    roi = frame[region[1]:region[3], region[0]:region[2]]
-    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-    # Adaptive histogram equalization
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-    enhanced = clahe.apply(gray)
-    # Denoise
-    denoised = cv2.fastNlMeansDenoising(enhanced)
-    return denoised
-```
-
----
-
-### Configuration Management
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **pydantic** | 2.5.x+ | Settings validation | Type-safe config, validation at startup, env var support |
-| **python-dotenv** | 1.0.x+ | Environment variables | Local config without hardcoding |
-
-**Rationale:**
-- Regions of interest (ROIs) for OCR are config, not code
-- Pydantic validates on load, prevents runtime errors from bad config
-- `.env` for local overrides (different stream URLs, debug modes)
-
-**Confidence:** HIGH (standard Python practice)
-
-**Config example:**
-```python
-from pydantic import BaseModel
-from pydantic_settings import BaseSettings
-
-class OCRRegion(BaseModel):
-    name: str
-    x: int
-    y: int
-    width: int
-    height: int
-
-class Settings(BaseSettings):
-    stream_url: str
-    database_path: str = "events.db"
-    ocr_regions: list[OCRRegion]
-
-    class Config:
-        env_file = ".env"
-```
-
----
-
-### Deduplication & Caching
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **diskcache** | 5.6.x+ | Frame result caching | Avoid re-OCR-ing identical frames (stream buffering causes duplicates) |
-| **imagehash** | 4.3.x+ | Perceptual hashing | Detect near-duplicate frames (compression artifacts) |
-
-**Rationale:**
-- Streams have buffering/keyframe repeats
-- OCR is expensive (100-200ms/frame with GPU)
-- Cache OCR results keyed by perceptual hash
-- `diskcache` persists across runs, unlike `functools.lru_cache`
-
-**Confidence:** MEDIUM (requires validation of current versions)
-
-**Usage:**
-```python
-import imagehash
-from PIL import Image
-from diskcache import Cache
-
-cache = Cache('.cache')
-
-def get_cached_ocr(frame):
-    pil_img = Image.fromarray(frame)
-    hash_key = str(imagehash.phash(pil_img))
-
-    if hash_key in cache:
-        return cache[hash_key]
-
-    result = perform_ocr(frame)
-    cache[hash_key] = result
-    return result
-```
-
----
-
-### Logging & Monitoring
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **loguru** | 0.7.x+ | Application logging | Better DX than stdlib logging, automatic rotation, colored output |
-| **tqdm** | 4.66.x+ | Progress bars | Visual feedback during live processing |
-
-**Rationale:**
-- `loguru` simplifies logging setup, handles file rotation automatically
-- `tqdm` shows frames/sec, events/sec for monitoring pipeline health
-
-**Confidence:** HIGH (widely used)
-
----
+| Library | Version | Purpose | v3 Usage |
+|---------|---------|---------|----------|
+| tenacity | >= 9.0 | Retry logic | VLR.gg scraping resilience |
+| rich | >= 14.0 | Terminal formatting | Already used for logging |
+| typer | >= 0.12 | CLI framework | (unused in v3, can remove) |
+| structlog | >= 25.0 | Structured logging | Experiment logging |
 
 ## Installation
 
+### Additions for v3
+
 ```bash
-# Core dependencies (extend existing requirements.txt)
+# Web scraping additions
+uv pip install httpx==0.28.1
+uv pip install pyrate-limiter==4.0.2
+uv pip install tqdm==4.67.3
 
-# OCR upgrade
-pip install easyocr
-
-# Event storage
-pip install sqlalchemy alembic
-
-# State management
-pip install python-statemachine deepdiff
-
-# Frame processing enhancements
-pip install scikit-image imutils
-
-# Configuration
-pip install pydantic pydantic-settings python-dotenv
-
-# Deduplication
-pip install diskcache imagehash pillow
-
-# Logging
-pip install loguru tqdm
-
-# Timestamp utilities (optional)
-pip install timecode
+# Update requirements.txt
+echo "httpx>=0.28" >> requirements.txt
+echo "pyrate-limiter>=4.0" >> requirements.txt
+echo "tqdm>=4.67" >> requirements.txt
 ```
 
----
+### Optional Cleanup
 
-## Alternatives Considered
+Remove unused dependencies (pyarrow, typer) if not referenced:
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| OCR | EasyOCR | PaddleOCR | Heavier dependencies, less Windows support |
-| OCR | EasyOCR | pytesseract | Poor accuracy on game fonts, Windows install friction |
-| Storage | SQLite + SQLAlchemy | PostgreSQL | Overkill for local-first, requires server setup |
-| Storage | SQLite | Parquet | No incremental writes, no ACID |
-| Storage | SQLite | JSONL | No queries, no indexes |
-| State Diffing | deepdiff | Manual comparison | Brittle, hard to maintain |
-| State Machine | python-statemachine | Manual FSM | Reinventing wheel, no validation |
-| Caching | diskcache | Redis | Requires server, overkill for single-node |
-| Config | pydantic | ConfigParser | No validation, no type safety |
+```bash
+# Verify usage first
+grep -r "import pyarrow" src/ tests/ scripts/
+grep -r "import typer" src/ tests/ scripts/
 
----
-
-## Architecture Notes
-
-### Data Flow
-
-```
-Stream (streamlink)
-  ↓
-Frame Buffer (OpenCV)
-  ↓
-ROI Extraction (config-driven)
-  ↓
-Preprocessing (scikit-image)
-  ↓
-OCR (EasyOCR) → Cache (diskcache + imagehash)
-  ↓
-State Diffing (deepdiff)
-  ↓
-State Machine (python-statemachine)
-  ↓
-Event Logging (SQLite via SQLAlchemy)
+# If no matches, remove from requirements.txt
 ```
 
-### Storage Schema
+## Integration Architecture
 
-**events table:**
-```sql
-CREATE TABLE events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_type TEXT NOT NULL,
-    timestamp REAL NOT NULL,
-    stream_offset REAL,
-    frame_number INTEGER,
-    confidence REAL,
-    data JSON,
-    frame_hash TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+### 1. VLR.gg Scraper (scripts/scrape_vlr.py)
 
-CREATE INDEX idx_event_type ON events(event_type);
-CREATE INDEX idx_timestamp ON events(timestamp);
-CREATE INDEX idx_frame_hash ON events(frame_hash);
+```python
+import httpx
+from bs4 import BeautifulSoup
+from pyrate_limiter import Duration, Limiter, Rate
+from pathlib import Path
+
+# Rate limiter: 1 req/sec (VLR.gg politeness)
+limiter = Limiter(Rate(1, Duration.SECOND))
+
+async def scrape_match_page(match_url: str) -> dict:
+    """Fetch match metadata (teams, map, date, VOD link)."""
+    async with limiter.ratelimit("vlr", delay=True):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(match_url, timeout=10.0)
+            soup = BeautifulSoup(response.text, "lxml")
+            # Extract teams, map, VOD link
+            return {...}
+
+# Sync wrapper for simple usage
+def scrape_tournament(tournament_url: str) -> list[dict]:
+    """Scrape all matches from tournament page."""
+    import asyncio
+    return asyncio.run(_scrape_async(tournament_url))
 ```
 
-**ocr_cache table (optional, if not using diskcache):**
-```sql
-CREATE TABLE ocr_cache (
-    frame_hash TEXT PRIMARY KEY,
-    result JSON,
-    cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+**Storage:** JSON manifest at `data/vlr_manifest.json` mapping match_id to VOD URL + metadata.
+
+### 2. Scaled VOD Processing (scripts/process_vods_parallel.py)
+
+```python
+from joblib import Parallel, delayed
+from tqdm import tqdm
+from pathlib import Path
+
+def process_single_vod(vod_url: str, output_dir: Path) -> dict:
+    """Process one VOD through Valoscribe, return metadata."""
+    # Call Valoscribe processing pipeline
+    # Return map_id, event_count, parse_errors
+    ...
+
+def process_vod_batch(manifest: list[dict], n_jobs: int = 4):
+    """Process VODs in parallel with progress tracking."""
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(process_single_vod)(item["vod_url"], Path("data/processed"))
+        for item in tqdm(manifest, desc="Processing VODs")
+    )
+    return results
 ```
 
----
+**Rationale:**
+- joblib handles process pool, automatic error handling
+- tqdm wraps input iterable for progress bar
+- n_jobs=4 conservative (CPU-bound Valoscribe processing)
 
-## Windows 11 Compatibility Notes
+### 3. Experiment Orchestration (scripts/run_experiment_batch.py)
 
-**EasyOCR GPU support:**
-- Requires CUDA-compatible GPU + PyTorch with CUDA support
-- Install: `pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118`
-- Fallback: CPU mode works but slower (300-500ms/frame vs 100-200ms)
+```python
+import sqlite3
+from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
 
-**SQLite:**
-- Built into Python, no issues
+# SQLite experiment tracking
+def init_experiment_db(db_path: Path):
+    conn = sqlite3.connect(db_path)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS experiments (
+            id TEXT PRIMARY KEY,
+            model_type TEXT,
+            feature_set TEXT,
+            timestamp TEXT,
+            status TEXT
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS results (
+            experiment_id TEXT,
+            metric TEXT,
+            value REAL,
+            FOREIGN KEY(experiment_id) REFERENCES experiments(id)
+        )
+    """)
+    conn.commit()
+    return conn
 
-**Path handling:**
-- Use `pathlib.Path` for cross-platform paths
-- SQLite connection strings: `sqlite:///C:/path/to/db.sqlite` (forward slashes work on Windows)
+def run_experiment_tracked(config: dict, db_path: Path):
+    """Run single experiment, log to SQLite."""
+    conn = sqlite3.connect(db_path)
+    conn.execute("INSERT INTO experiments VALUES (?, ?, ?, ?, ?)",
+                 (config["id"], config["model"], config["features"],
+                  datetime.now().isoformat(), "running"))
+    conn.commit()
 
----
+    try:
+        result = run_experiment(config)  # existing function
 
-## Performance Targets
+        for metric, value in result["cv_results"]["overall_metrics"].items():
+            conn.execute("INSERT INTO results VALUES (?, ?, ?)",
+                        (config["id"], metric, value))
 
-| Metric | Target | Notes |
-|--------|--------|-------|
-| Frame processing | 30 FPS | Match stream rate (1920x1080 @ 30fps typical for VCT) |
-| OCR latency | <200ms/frame | GPU-accelerated EasyOCR |
-| Event write latency | <10ms | SQLite local writes |
-| Cache hit rate | >80% | With perceptual hashing |
+        conn.execute("UPDATE experiments SET status = ? WHERE id = ?",
+                    ("complete", config["id"]))
+        conn.commit()
+        return result
+    except Exception as e:
+        conn.execute("UPDATE experiments SET status = ? WHERE id = ?",
+                    ("failed", config["id"]))
+        conn.commit()
+        raise
 
----
+def run_all_experiments(configs: list[dict], max_workers: int = 2):
+    """Run experiments in parallel."""
+    db_path = Path("experiments/tracking.db")
+    init_experiment_db(db_path)
 
-## Migration Path
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(run_experiment_tracked, cfg, db_path): cfg
+                   for cfg in configs}
 
-**From current stack:**
-1. Add SQLAlchemy models alongside existing code
-2. Initialize SQLite database with Alembic
-3. Wrap pytesseract calls with EasyOCR (same interface)
-4. Add state machine for phase transitions
-5. Integrate deepdiff for state change detection
-6. Add diskcache for OCR results
+        for future in concurrent.futures.as_completed(futures):
+            config = futures[future]
+            try:
+                result = future.result()
+                print(f"✓ {config['id']}: log_loss={result['cv_results']['overall_metrics']['log_loss']:.4f}")
+            except Exception as e:
+                print(f"✗ {config['id']}: {e}")
+```
 
-**Backward compatibility:**
-- Keep existing streamlink + OpenCV pipeline
-- SQLite files are portable (copy for backup)
-- Configuration via pydantic won't break existing code
-
----
-
-## Critical Dependencies
-
-**Must verify versions (MEDIUM confidence):**
-- EasyOCR 1.7.x (check Windows GPU support)
-- SQLAlchemy 2.0.x (verify migration guide from 1.4)
-- python-statemachine 2.1.x (check API stability)
-- deepdiff 6.7.x (verify performance on large state dicts)
-
-**Verification needed:**
-- Context7 for EasyOCR, SQLAlchemy current versions
-- Official docs for Windows GPU setup (PyTorch + CUDA)
-- Benchmark EasyOCR vs pytesseract on actual VCT screenshots
-
----
+**Rationale:**
+- ProcessPoolExecutor: Separate Python processes for CPU-bound model training
+- SQLite: Single-file database, no server, concurrent reads + serial writes
+- max_workers=2: Conservative (prevents memory thrashing with XGBoost)
 
 ## Anti-Patterns to Avoid
 
-**Do NOT:**
-- Use MongoDB/NoSQL for events (overkill, worse query performance than SQLite)
-- Use Pandas for real-time event storage (memory overhead, not transactional)
-- Use multiprocessing for OCR (GPU contention, diminishing returns)
-- Use asyncio unless proven bottleneck (adds complexity, OpenCV is sync)
-- Store raw frames in database (use frame hashes, reference video files separately)
-- Use ORMs other than SQLAlchemy (less migration support)
+### DO NOT Add Heavy Orchestration
 
-**Do:**
-- Batch OCR requests if EasyOCR supports it (reduces GPU overhead)
-- Use connection pooling if processing multiple streams (not needed for single stream)
-- Validate OCR results before logging events (confidence thresholding)
-- Write unit tests for state machine transitions
-- Export to Parquet for ML training (after collection in SQLite)
+**Avoid:** Airflow, Prefect, Metaflow, Kubeflow
 
----
+**Why:**
+- **Airflow:** Requires webserver, scheduler, database. Overkill for 150 maps + 8 experiments. DAG complexity unjustified (no task dependencies, just parallelism).
+- **Prefect:** Similar overhead, designed for complex workflows. v3 workflow is embarrassingly parallel.
+- **Metaflow:** Netflix-scale tool. Designed for 1000s of experiments, S3 storage, cloud compute. Local-first Windows environment is antithetical.
 
-## Open Questions (require phase-specific research)
+**When to reconsider:** If v4+ requires scheduling (daily retraining), complex DAGs (data pipeline → training → backtesting → deployment), or distributed compute (cloud GPUs).
 
-1. **EasyOCR model selection:** Which pre-trained model works best for Valorant UI? (requires testing on actual frames)
-2. **OCR ROI optimization:** Exact bounding boxes for team names, agent icons, map name (requires frame analysis)
-3. **State machine complexity:** How many states needed? (requires domain analysis of VCT match phases)
-4. **Event taxonomy:** Complete list of event types (requires VCT broadcast structure research)
-5. **GPU memory limits:** Can EasyOCR + OpenCV coexist on consumer GPU? (requires hardware testing)
+### DO NOT Use requests-html
 
----
+**Avoid:** requests-html library
+
+**Why:** Unmaintained since 2019 (latest: 0.10.0). No updates for Python 3.8+. Use httpx instead (active development, async support, 0.28.1 released Dec 2024).
+
+### DO NOT Use Playwright/Selenium for VLR.gg
+
+**Avoid:** Browser automation for scraping
+
+**Why:** VLR.gg serves static HTML (verified by community scrapers using BeautifulSoup). Playwright/Selenium adds 100+ MB dependency (browser binary), 10x slower than httpx + BS4. Only needed for JavaScript-rendered SPAs (VLR.gg is not).
+
+**When to reconsider:** If VLR.gg migrates to React/Vue SPA and content becomes client-rendered.
+
+### DO NOT Add MLflow Yet
+
+**Avoid:** MLflow experiment tracking for v3
+
+**Why:**
+- Adds 15+ dependencies (Flask, SQLAlchemy, protobuf, gunicorn)
+- Requires running UI server (mlflow ui)
+- v3 needs: metadata persistence + comparison queries. SQLite handles both with zero dependencies.
+- MLflow value: model registry, deployment tracking, team collaboration. All v4+ concerns.
+
+**When to add:** v4 if adding model deployment, versioning, or team collaboration.
+
+## Version Verification Summary
+
+All versions verified against official sources (PyPI, GitHub releases) as of 2026-02-14:
+
+| Library | Recommended | Source | Confidence |
+|---------|-------------|--------|------------|
+| httpx | 0.28.1 | [PyPI](https://pypi.org/project/httpx/) | HIGH |
+| pyrate-limiter | 4.0.2 | [PyPI](https://pypi.org/project/pyrate-limiter/) | HIGH |
+| tqdm | 4.67.3 | [PyPI](https://pypi.org/project/tqdm/) | HIGH |
+| beautifulsoup4 | 4.14.3 | [PyPI](https://pypi.org/project/beautifulsoup4/) | HIGH |
+| lxml | 6.0.2 | [PyPI](https://pypi.org/project/lxml/) | HIGH |
+| streamlink | 8.2.0 | [PyPI](https://pypi.org/project/streamlink/) | HIGH |
+| joblib | 1.5.3 | [PyPI](https://pypi.org/project/joblib/) | HIGH |
+| SQLite | 3.51.2 | [SQLite releases](https://www.sqlite.org/changes.html) | HIGH |
+
+## Constraints Satisfied
+
+- **Local-first:** All libraries run locally, no cloud services
+- **Windows 11:** All libraries support Windows (httpx, joblib, SQLite cross-platform)
+- **Python 3.11:** All libraries support Python 3.10+ (httpx requires 3.10+, others compatible)
+- **uv package manager:** All installable via `uv pip install`
+- **No deep dependencies:** httpx (8 deps), pyrate-limiter (1 dep), tqdm (0 deps)
 
 ## Sources
 
-**Confidence levels:**
-- HIGH: Standard Python ecosystem (SQLite, NumPy, OpenCV)
-- MEDIUM: Library-specific recommendations based on training data (requires Context7 verification)
-- LOW: Performance claims (require benchmarking on actual VCT streams)
+### Web Scraping
+- [VLR.gg scraper examples](https://github.com/aritropaul/vlr.gg-scraper)
+- [VLR.gg scraping discussion](https://www.vlr.gg/30777/is-data-scraping-allowed)
+- [Python web scraping libraries comparison](https://www.zenrows.com/blog/python-web-scraping-library)
+- [BeautifulSoup documentation](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)
+- [httpx documentation](https://www.python-httpx.org/)
+- [pyrate-limiter PyPI](https://pypi.org/project/pyrate-limiter/)
 
-**Verification needed (Context7 or official docs):**
-- EasyOCR: https://github.com/JaidedAI/EasyOCR
-- SQLAlchemy 2.0: https://docs.sqlalchemy.org/
-- python-statemachine: https://python-statemachine.readthedocs.io/
-- deepdiff: https://zepworks.com/deepdiff/
-- diskcache: http://www.grantjenks.com/docs/diskcache/
+### Parallel Processing
+- [joblib documentation](https://joblib.readthedocs.io/en/latest/parallel.html)
+- [Python multiprocessing comparison](https://www.infoworld.com/article/2257768/the-best-python-libraries-for-parallel-processing.html)
+- [concurrent.futures documentation](https://docs.python.org/3/library/concurrent.futures.html)
 
-**Critical:** All version numbers and API claims must be verified before implementation.
+### Experiment Tracking
+- [MLflow vs DVC comparison](https://www.nb-data.com/p/simple-model-experiment-tracking)
+- [SQLite Python documentation](https://docs.python.org/3/library/sqlite3.html)
+- [MLflow orchestration overview](https://www.prompts.ai/blog/best-orchestration-solutions-machine-learning-projects-2026)
+
+### Package Versions
+- [httpx PyPI](https://pypi.org/project/httpx/)
+- [pyrate-limiter PyPI](https://pypi.org/project/pyrate-limiter/)
+- [tqdm PyPI](https://pypi.org/project/tqdm/)
+- [beautifulsoup4 PyPI](https://pypi.org/project/beautifulsoup4/)
+- [lxml releases](https://github.com/lxml/lxml/releases)
+- [streamlink PyPI](https://pypi.org/project/streamlink/)
+- [joblib PyPI](https://pypi.org/project/joblib/)
+- [SQLite releases](https://www.sqlite.org/changes.html)

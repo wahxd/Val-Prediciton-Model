@@ -1,392 +1,399 @@
-# Domain Pitfalls: CV-Based Valorant Esports Event Detection
+# Domain Pitfalls: Esports Prediction System Scaling
 
-**Domain:** Computer vision event extraction from VCT broadcast streams
-**Researched:** 2026-02-12
-**Confidence:** HIGH (based on existing codebase analysis and domain expertise)
+**Domain:** VCT match prediction from CV-extracted VOD data + VLR.gg metadata
+**Researched:** 2026-02-14
+**Context:** Scaling from 71 hand-curated Champions 2025 maps to 150+ automated dataset
+
+---
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites, data corruption, or complete system failure.
+Mistakes that cause rewrites, data poisoning, or major infrastructure issues.
 
-### Pitfall 1: Replay Footage Creating Phantom Events
-**What goes wrong:** Broadcast replays show kills/rounds that already happened. Without replay detection, you log duplicate events with wrong timestamps, corrupting your event log. A single 30-second replay can inject 5-10 false kill events.
+### Pitfall 1: VOD Availability Decay (The "Broken Pipeline" Problem)
+
+**What goes wrong:** You scrape VLR.gg for 200 match URLs pointing to YouTube VODs. Three months later, when reprocessing or validating, 30% of those VODs are private, deleted, or DMCA-taken-down. Your dataset silently degrades and becomes non-reproducible.
 
 **Why it happens:**
-- VCT broadcasts frequently show replays during tactical timeouts, between rounds, or after clutch plays
-- Replay overlays are subtle (small "REPLAY" text in corner, different camera angles)
-- State extraction (scores, alive counts) works identically on replay footage
-- Timer may continue running or reset during replays
+- YouTube streamers delete VODs after 60 days (partners), 14 days (affiliates), or 7 days (regular users) to avoid DMCA strikes
+- Tournament organizers make VODs private after contract expiration
+- Copyright claims remove individual videos without warning
+- URL structure changes (playlist reorganization, channel moves)
 
 **Consequences:**
-- Event logs contain duplicate kills/rounds with incorrect timestamps
-- Prediction model trains on corrupted data (same events counted 2-3x)
-- Economy calculations become impossible (phantom kills reset economy state)
-- No way to retroactively clean data without manual review of VODs
+- Dataset becomes non-reproducible (can't reprocess with new detectors)
+- Temporal validation breaks if missing VODs create gaps in chronological data
+- Ablation studies fail when reference dataset cannot be regenerated
+- Silent data loss goes undetected until reprocessing attempt
 
 **Prevention:**
-1. **OCR-based replay detection:** Add ROI for "REPLAY" text overlay (typically top-left or top-right corner)
-2. **State coherence validation:** Alive counts should only decrease, never increase (except round reset). If alive_count increases without score change, likely replay
-3. **Timer regression detection:** If timer increases between frames (without round end), flag as replay
-4. **Score change validation:** Score can only increase, never decrease. Score regression = replay or broadcast transition
-5. **Pause state detection:** Suppress event detection during tactical timeouts (different overlay state)
+1. **Immediate processing:** Process VODs within 48 hours of scraping VLR.gg links (before deletion window)
+2. **Availability checks:** Before queueing 150 VODs for 30-hour processing run, validate ALL YouTube URLs are accessible (`yt-dlp --check-formats`)
+3. **Tombstone tracking:** Track "intended dataset" vs "available dataset" separately — record which VLR.gg matches had inaccessible VODs
+4. **Graceful degradation:** When VOD unavailable, log to manifest with reason (deleted/private/unavailable) and continue with remaining VODs
+5. **Downstream awareness:** Training pipeline must handle missing maps in temporal sequence (gap-aware walk-forward CV)
 
 **Detection:**
-- Event logs show more kills than mathematically possible (e.g., 8 kills in a 5v5 round)
-- Alive count increases mid-round
-- Timestamp order violations (events appear out of sequence)
-- Economy spikes don't match round outcomes
+- YouTube API returns 404 or "This video is private"
+- `streamlink` fails with "No playable streams found"
+- VLR.gg lists match but YouTube link returns 410 Gone
+- Processing queue shows lower completion rate than expected (e.g., 142/150 instead of 150/150)
 
-**Phase mapping:** Phase 1 (event detection) must include replay detection before processing any events. This is not a "nice to have" — it's foundational to data quality.
+**Phase impact:** Phase 1 (VLR.gg scraping), Phase 2 (VOD processing pipeline)
 
 ---
 
-### Pitfall 2: Hardcoded ROI Coordinates Breaking on Overlay Updates
-**What goes wrong:** VCT updates broadcast overlay between seasons/events (2024 vs 2025 overlays differ). Your hardcoded ROI coordinates suddenly extract nothing or wrong data. All existing frame processing fails silently or returns garbage.
+### Pitfall 2: Batch Processing Failure Opacity (The "Silent Corruption" Problem)
+
+**What goes wrong:** You queue 150 VODs for overnight processing (20+ hours). Processing crashes at VOD #83 due to OCR timeout. You wake up to 82 completed maps and assume the run finished successfully. Train model on partial dataset. Model evaluation shows poor results but you can't tell if it's model quality or data quality.
 
 **Why it happens:**
-- Riot updates VCT broadcast graphics every few months (Champions vs Masters vs Kickoff overlays vary)
-- Stream providers (Valorant_Esports_EN vs regional channels) may use slightly different layouts
-- UI scales differently at different stream qualities (1080p source vs re-encoded 720p)
-- Your codebase has two conflicting ROI systems (config.py vs vision_engine.py with different coordinates)
+- Batch video processing pipelines fail partially (per-VOD errors don't halt entire batch)
+- Windows environment masks errors (PowerShell continues on exception, Python scripts may catch-and-continue)
+- Processing time variability (15-30 min/VOD) makes "expected completion time" unreliable
+- No centralized error aggregation for 150-item batch
 
 **Consequences:**
-- OCR reads wrong screen regions, returns gibberish or empty strings
-- Alive count detection samples wrong pixels, always returns 0 or 5
-- Spike status detection fails, always returns false
-- System appears to work (no crashes) but logs completely invalid data
-- Historical data becomes incomparable across overlay versions
+- Train on incomplete dataset without realizing it
+- Temporal validation corrupted (missing maps create unintended gaps)
+- Ablation studies non-reproducible (rerun produces different dataset)
+- Waste compute re-running entire 20-hour batch to identify which VODs failed
 
 **Prevention:**
-1. **Overlay version detection:** OCR a known constant element (e.g., "VALORANT" logo position/text) to fingerprint overlay version
-2. **Multi-version ROI configs:** Store ROI sets per overlay version (VCT_2024_CHAMPIONS, VCT_2025_KICKOFF, etc.)
-3. **Automated ROI calibration:** On startup, show reference frame, let user click key points to auto-adjust ROIs
-4. **Validation tests:** Before processing match, test OCR on known static elements (round counter should read "0-0" at start)
-5. **Runtime sanity checks:** If score OCR fails >10 consecutive frames, alert that ROI is likely wrong
-6. **Single source of truth:** Consolidate config.py and vision_engine.py ROI definitions (currently duplicated and conflicting)
+1. **Processing manifest:** Create `.processing_manifest.json` with status tracking per VOD:
+   ```json
+   {
+     "vlr_match_12345": {
+       "status": "completed|failed|skipped",
+       "youtube_url": "...",
+       "map_id": "...",
+       "processing_time_sec": 1823,
+       "error": null,
+       "timestamp": "2026-02-14T15:23:00Z"
+     }
+   }
+   ```
+2. **Atomic completion markers:** Write `.SUCCESS` file only after ALL processing steps complete for a VOD
+3. **Resumable processing:** Before reprocessing entire batch, check manifest and skip VODs with `.SUCCESS` marker
+4. **Exit code discipline:** Processing script must exit non-zero if ANY VOD fails (enable strict error handling)
+5. **Progress monitoring:** Write processing state to manifest after each VOD (enables mid-run inspection)
+6. **Post-run validation:** Compare completed maps against intended dataset — fail loudly if mismatch
 
 **Detection:**
-- OCR consistently returns empty strings or single characters
-- Score never changes despite round progression
-- Alive counts stay at 0 or 5 all match
-- Economy values are always 0 or nonsensical (9999999)
-- Timer reads random characters instead of MM:SS
+- Expected 150 processed map directories, `ls data/processed/ | wc -l` shows 127
+- Manifest shows `"status": "failed"` for subset of VODs
+- Training dataset has unexpected date gaps (2024-11-03, 2024-11-05, missing 2024-11-04)
+- Reprocessing same batch produces different number of maps
 
-**Phase mapping:** Phase 1 needs ROI validation. Phase 2 (multi-match reliability) needs overlay version detection and multi-version support.
+**Phase impact:** Phase 2 (VOD processing pipeline), Phase 3 (data ingestion)
 
 ---
 
-### Pitfall 3: State Debouncing Failures Creating Event Storms
-**What goes wrong:** OCR flickers between correct/incorrect values across consecutive frames (timer reads "1:30", "1", "1:30", "1:3C", "1:30"). Without debouncing, each flicker triggers a state change event. A single kill generates 5-10 "kill" events as alive_count oscillates (4, 5, 4, 4, 5, 4).
+### Pitfall 3: ReplayDetector Validation Failure at Scale (The "Unverified Detector" Problem)
+
+**What goes wrong:** ReplayDetector works perfectly on 71 Champions maps. You scale to 150 maps including older tournaments (Masters Bangkok 2024, VCT Americas 2024) which use different broadcast layouts or timer formats. ReplayDetector silently fails to detect replays (false negatives) or over-suppresses live footage (false positives). Training data becomes poisoned with phantom duplicate events or missing critical rounds.
 
 **Why it happens:**
-- pytesseract OCR is non-deterministic on marginal inputs (compression artifacts, motion blur)
-- Alive status detection uses brightness thresholds — small lighting changes cause flicker
-- Stream buffering causes duplicate frames or skipped frames
-- HSV color detection for spike status is sensitive to compression artifacts
-- You process at 6fps but events happen between frames (kill occurs between frame N and N+1)
+- Broadcast layout changes between tournaments (different OCR ROI coordinates for timer)
+- Timer format variations (some broadcasts show "1:30", others show "01:30" or "90s")
+- Overtime rounds use different timer logic (alternating 2-round segments in Valorant OT)
+- OCR quality degrades on older/lower-bitrate VODs (more `None` timer readings)
+- Operational requirements VSCR-03/04 explicitly deferred in v2 (detection rate and regression check)
 
 **Consequences:**
-- Event logs contain 10x-100x more events than actually occurred
-- Impossible to determine "true" event timestamp (which of 10 flickers is real?)
-- Prediction model sees massive noise-to-signal ratio
-- Event log file size explodes (MB instead of KB per match)
-- Downstream analysis becomes impossible (can't calculate kill rate when kills are duplicated)
+- False negatives: Replay events leak into training data → model learns from duplicate/phantom rounds
+- False positives: Live footage suppressed → model trained on incomplete maps (missing critical comeback rounds)
+- Silent corruption: No error thrown, just bad training data
+- Non-reproducible experiments: Same VOD reprocessed with different detector settings produces different feature values
 
 **Prevention:**
-1. **Temporal debouncing:** State must persist for N consecutive frames (N=3-5) before emitting event
-2. **Confidence thresholds:** OCR should return confidence scores — ignore low-confidence reads
-3. **State history window:** Track last 10 states, use median/mode instead of last value
-4. **Hysteresis on thresholds:** Use different thresholds for state transitions (e.g., alive if brightness >60, dead if <40, keep previous state if 40-60)
-5. **Event deduplication:** Before logging event, check if identical event occurred in last 2 seconds
-6. **OCR preprocessing improvements:**
-   - Upscale ROI before OCR (2x bilinear)
-   - Denoise with Gaussian blur
-   - Adaptive thresholding instead of fixed threshold
-   - Whitelist allowed characters (timer = "0-9:", score = "0-9")
+1. **Validation metrics per map:** Track `replay_count` and `frames_suppressed` in metadata.json (already implemented)
+2. **Distribution validation:** Before training, plot histogram of `replay_count` across all maps — outliers indicate detector failure
+3. **Regression flagging:** If map has `replay_count=0` but duration >60 min (typical VCT map with replays), flag for manual inspection
+4. **Tournament-stratified validation:** Validate detector performance separately for each tournament (Champions 2025, Masters Bangkok 2024, VCT Americas 2024)
+5. **Spot-check protocol:** Manually verify 5% of maps (randomly sampled, stratified by tournament) by watching VOD segments flagged as replays
+6. **Quality gate:** Exclude maps with `replay_count` outside [5th percentile, 95th percentile] from training (likely detector failures)
 
 **Detection:**
-- Event log shows 50+ events per round (should be 5-15)
-- Multiple identical events within 1-2 seconds
-- Alive count changes every frame instead of step changes
-- Log file size >1MB for single map (should be ~50-200KB)
-- Kill events when alive_count didn't actually change
+- Map metadata shows `replay_count: 0` for 90-minute VOD (expected ~10-15 replays for long map)
+- Map metadata shows `replay_count: 47` for 35-minute VOD (likely over-suppression)
+- Feature engineering shows negative economy values (impossible) → indicates suppressed buy rounds
+- Manual spot-check reveals timer in replay segment but not suppressed
 
-**Phase mapping:** Phase 1 (event detection) requires debouncing logic before any events are logged. This is the difference between usable and unusable data.
+**Phase impact:** Phase 2 (VOD processing pipeline), Phase 5 (data quality validation)
 
 ---
 
-### Pitfall 4: Buy Phase vs Combat Phase State Conflation
-**What goes wrong:** Economy data is only visible during buy phase (first 30s of round). During combat, economy UI is hidden. Your code reads economy ROI during combat, gets 0 or random noise, and logs "team economy dropped to 0" events. You can't distinguish between "actual eco round" and "UI not visible."
+### Pitfall 4: Temporal Validation Collapse with Small Dataset Expansion (The "Overfitting Mirage" Problem)
+
+**What goes wrong:** You train on 71 maps with leave-one-series-out CV and get promising log loss (0.52). You expand to 150 maps and log loss degrades to 0.68. You conclude the new data is "low quality" and discard it. In reality, 71 maps was too small for reliable CV — the original 0.52 was overfitted, and 0.68 is closer to true generalization performance.
 
 **Why it happens:**
-- VCT overlay shows economy only during buy phase, hides during combat to reduce clutter
-- Your current code (vision_engine.py get_economy) doesn't check game phase before OCR
-- Round timer alone doesn't indicate phase (spike plant extends timer)
-- No state machine tracking round phase transitions
+- Small datasets (N < 100-300) overestimate predictive power due to high variance in CV splits
+- Temporal validation requires contiguous chronological sequences — missing maps break walk-forward folds
+- Performance doesn't converge until N = 750-1500 for many ML tasks (you're at N=71→150, still in high-variance zone)
+- "Single lucky fold" effect: One particularly predictable series (e.g., stomp matches) inflates metrics
 
 **Consequences:**
-- Economy event logs are 90% false "economy dropped to 0" during combat
-- Can't determine actual buy type (eco/force/full buy) from logs
-- Prediction model trained on garbage economy features
-- Manual data cleaning requires watching every round to classify buy types
+- Mistakenly discard valuable training data as "low quality"
+- False confidence in model edge (think you have 0.52 log loss, actually 0.68)
+- Downstream betting decisions based on inflated performance estimates
+- Waste research effort debugging "data quality issues" that are actually sample size issues
 
 **Prevention:**
-1. **Phase detection state machine:**
-   - Buy phase: timer 1:40-1:10, economy visible
-   - Combat phase: timer <1:10 or spike planted, economy hidden
-   - Post-round: all dead or timer 0:00, transition state
-2. **Cache last valid economy:** During combat, use cached buy-phase economy values
-3. **Event timing restrictions:** Only emit "buy_type" event during buy phase (once per round)
-4. **UI element presence detection:** Check for economy UI visibility (is background box present?) before OCR
-5. **Round phase in event schema:** Tag events with round_phase context (buy/combat/post)
+1. **Confidence intervals:** Report log loss with bootstrapped 95% CI, not point estimates (expect wide intervals at N=71)
+2. **Sample size awareness:** Document "performance will be unstable until N>300" in evaluation framework
+3. **Convergence testing:** Plot log loss vs training set size (50, 75, 100, 125, 150 maps) — expect monotonic improvement
+4. **Hold-out test set:** Reserve most recent tournament (20-30 maps) as untouched test set — only evaluate on this ONCE at end
+5. **Cross-tournament validation:** Compare LOTO performance across tournaments — high variance indicates sample size issues
+6. **Baseline comparison:** Track "predict home team always" baseline — improvement over baseline matters more than absolute log loss
 
 **Detection:**
-- Economy oscillates between valid values and 0 throughout round
-- Economy events trigger mid-combat
-- Team economy shows as 0 when they're clearly on full buy (rifles + abilities)
-- Event logs missing buy_type classification
+- Log loss confidence interval spans >0.15 (e.g., [0.45, 0.63])
+- Adding 50% more data degrades performance (non-monotonic learning curve)
+- One tournament dominates LOTO performance (e.g., removing Champions improves log loss by 0.10)
+- Performance on most recent 10 maps wildly different from training performance
 
-**Phase mapping:** Phase 2 (economy events) requires phase detection state machine. Attempting economy extraction without phase awareness produces unusable data.
+**Phase impact:** Phase 4 (model evaluation), Phase 5 (model iteration)
 
 ---
 
-### Pitfall 5: Frame-Level vs Event-Level Timestamp Precision Confusion
-**What goes wrong:** You timestamp events with frame capture time, but frames are captured at 6fps (every ~166ms). Actual game events happen at 60fps game time. Two kills 50ms apart appear simultaneous in your log. You can't distinguish "trade kill" (50ms apart) from "double kill" (1000ms apart).
+### Pitfall 5: Meta Drift Blindness (The "Stale Model" Problem)
+
+**What goes wrong:** You train on VCT 2024 data (patches 8.0-8.11) and deploy for VCT 2025 matches (patch 9.0+). Riot nerfs Jett dash and buffs Killjoy turret. Your model still predicts based on 2024 agent meta. Duelist-heavy compositions underperform your predictions. Log loss degrades from 0.55 to 0.72 in production.
 
 **Why it happens:**
-- Stream is 60fps, you process every 10th frame (6fps optimization)
-- Multiple game events can occur between processed frames
-- time.time() gives you "when frame was processed" not "when event occurred in game"
-- VCT broadcasts are already delayed 5-10 seconds from actual game time
-- No access to game server timestamps — only broadcast timestamps
+- Valorant patches every 2 weeks with agent balance changes
+- Meta shifts make historical feature distributions non-stationary (concept drift)
+- Your feature set excludes per-agent features (per PROJECT.md: "meta shifts between patches, unstable signal")
+- Game mechanics features (economy, score, momentum) are stable, but agent-comp interactions are not
+- Training data from 6+ months ago has different "ground truth" relationship to outcomes
 
 **Consequences:**
-- Event sequence order is ambiguous (which kill happened first?)
-- Can't calculate reaction times or trade kill timing
-- Prediction model can't use fine-grained timing features
-- Round timer from OCR doesn't align with event timestamps (timer is game time, timestamp is wall clock time)
-- Replay analysis shows timestamp errors of 2-3 seconds
+- Model degrades silently in production (no agent features = no drift detection signal)
+- Predictions miscalibrated for current meta (overconfident on outdated patterns)
+- Waste compute retraining on stale data (need recency weighting or data pruning)
+- Miss profitable betting opportunities (model underestimates new meta compositions)
 
 **Prevention:**
-1. **Use round timer as event timestamp:** OCR'd timer (1:23) is game time — convert to seconds remaining and use as event timestamp
-2. **Event ordering within frame:** When multiple state changes detected in one frame, assign sub-frame ordering based on logic (score change implies round end, which implies all deaths occurred before)
-3. **Timestamp normalization:** Store both wall_clock_time (frame capture) and game_time (timer OCR) for each event
-4. **Accept precision limits:** Document that events within same frame have ~166ms timestamp uncertainty
-5. **Frame number as event ID:** Include frame_number in event schema for exact ordering
+1. **Recency weighting:** Implement inverse-time decay weighting for training samples (already in v2 framework)
+2. **Rolling window training:** Train only on last 6 months of data (1-2 major patches in Valorant)
+3. **Patch-aware splits:** Validate across patch boundaries (train pre-patch, test post-patch) to measure drift
+4. **Performance monitoring:** Track production log loss over time — alert if 7-day moving average exceeds training baseline by >0.10
+5. **Graceful fallback:** When production log loss degrades, fall back to simpler model or widen confidence intervals
+6. **Meta features (optional):** If adding agent features, use patch-relative encoding (e.g., "picked in >30% of matches this patch") not absolute pick rates
 
 **Detection:**
-- Event timestamps don't align with round timer values
-- Multiple events have identical timestamps when they should be sequential
-- Events appear out of logical order (round end before all kills)
-- Timer shows 1:30 but event timestamp is wall clock time
+- Production log loss trends upward over time (concept drift)
+- Model overconfident on recent matches (predicted 0.75 win prob, actual outcome 50/50 over 20 matches)
+- VLR.gg shows meta shift (Jett pick rate drops from 60% to 30% in last 50 matches) but model predictions unchanged
+- Cross-tournament validation shows newer tournaments have worse performance
 
-**Phase mapping:** Phase 1 must decide on timestamp strategy upfront — changing timestamp schema after data collection requires reprocessing all matches.
+**Phase impact:** Phase 4 (model evaluation), Phase 5 (model iteration), Phase 6 (production monitoring — out of scope for v3)
 
 ---
 
 ## Moderate Pitfalls
 
-Mistakes that cause delays, data quality issues, or technical debt.
+Mistakes that cause delays, technical debt, or experimental design flaws.
 
-### Pitfall 6: Stream Quality Variations Breaking Detection Thresholds
-**What goes wrong:** Your brightness threshold for alive detection (brightness > 50) works on 1080p source stream but fails on 720p re-encoded stream. Stream buffering drops quality mid-match. Detection accuracy drops from 95% to 60%.
+### Pitfall 6: VLR.gg Schema Drift (The "Scraper Breakage" Problem)
+
+**What goes wrong:** You build a scraper for VLR.gg's current HTML structure (`.match-item > .team-name`). VLR.gg redesigns their site. Your scraper silently fails or returns malformed data. You don't notice for 2 weeks. By then, 30 new matches are missing from your dataset.
 
 **Why it happens:**
-- Streamlink "best" quality varies (sometimes 1080p60, sometimes 720p30)
-- Network issues cause adaptive bitrate changes mid-match
-- Different stream sources (Twitch vs YouTube) use different encoders (compression artifacts vary)
-- Stream provider may switch encoder settings between maps
+- VLR.gg has no official API (community scrapers are fragile)
+- HTML structure changes without notice (class names, nesting, pagination)
+- Anti-scraping measures (rate limiting, IP blocks, Cloudflare challenges)
+- Tournament page format varies (regular season vs playoffs vs international events)
 
 **Prevention:**
-1. **Adaptive thresholds:** Calibrate thresholds on first round (sample alive players at round start when all are alive)
-2. **Quality validation:** Check resolution on each frame, warn if != 1920x1080
-3. **Fallback detection methods:** If brightness detection fails, try edge detection or template matching
-4. **Log stream metadata:** Record resolution, bitrate, source for each match to correlate with accuracy
+- **Schema validation:** Assert expected fields present after scraping (team names, map name, YouTube URL)
+- **Scraping tests:** Store 2-3 example HTML pages in `tests/fixtures/`, write unit tests for scraper
+- **Change detection:** Hash scraped HTML structure (tag hierarchy), alert if structure changes
+- **Graceful degradation:** If parsing fails, log raw HTML and continue with partial data
+- **Manual review:** After initial scrape of 150 matches, manually inspect 10 random entries for correctness
+- **Rate limiting:** 1 request/sec to avoid IP blocks (VLR.gg community recommendation)
 
 **Detection:**
-- Alive count accuracy drops suddenly mid-match
-- Accuracy varies between matches with same ROI settings
-- OCR confidence scores decrease
+- Scraper returns empty list or missing fields (team names are `None`)
+- VLR.gg returns 429 Too Many Requests or Cloudflare challenge page
+- YouTube URLs point to wrong videos (wrong tournament, wrong date)
 
-**Phase mapping:** Phase 2 (multi-match reliability) should add stream quality monitoring and adaptive thresholding.
+**Phase impact:** Phase 1 (VLR.gg scraping)
 
 ---
 
-### Pitfall 7: Team/Map Auto-Detection Without Validation
-**What goes wrong:** OCR misreads team name "LOUD" as "L0UD" or map name "Ascent" as "Ascerit". You auto-create match records with wrong team names. Historical data has 5 variations of same team name ("LOUD", "L0UD", "LODD", etc.). Cross-match analysis impossible.
+### Pitfall 7: Match Format Metadata Inconsistency (The "BO3 vs BO5" Problem)
+
+**What goes wrong:** You scrape match results from VLR.gg and assume all matches are BO3. Some playoff matches are BO5. Your series prediction model trained on BO3 data predicts BO5 matches incorrectly (momentum adjustment wrong, map count expectations wrong).
 
 **Why it happens:**
-- Team name text is stylized/custom fonts (not OCR-friendly)
-- Map names appear briefly (2-3 seconds at round start)
-- No validation against known team/map lists
-- Typos propagate through entire match
+- Tournament formats vary (group stage BO3, playoffs BO5, grand finals BO5)
+- VLR.gg doesn't always clearly label match format in consistent location
+- Overtime rule variations (some tournaments use different OT formats)
+- Tiebreaker maps (some tournaments have unique tiebreaker rules)
 
 **Prevention:**
-1. **Fuzzy matching against whitelist:** Maintain list of known VCT teams, find closest match (Levenshtein distance)
-2. **Multi-frame consensus:** Read team name from 5-10 frames, use majority vote
-3. **Manual confirmation:** Show detected team/map, require user confirmation before starting match
-4. **Regex patterns:** Team names follow patterns (all caps, 2-6 chars) — reject invalid formats
-5. **Metadata API fallback:** Use VCT API (vlr.gg, rib.gg) to fetch current matches, match against detected names
+- **Format field in manifest:** Scraper must extract `match_format: "BO3" | "BO5"` from VLR.gg
+- **Validation check:** Count maps per series in scraped data — flag if BO3 match has 4+ maps
+- **Format-specific models:** Train separate models for BO3 and BO5 if sample sizes permit
+- **Graceful handling:** If format unknown, use conservative prediction (wider confidence intervals)
 
 **Detection:**
-- Multiple variations of same team in database
-- Map names that don't exist in Valorant
-- Team names with numbers/symbols (L0UD instead of LOUD)
+- Series prediction shows 4 maps for "BO3" match
+- Model predicts match winner after map 2 (assumes BO3) but match continues to map 4
 
-**Phase mapping:** Phase 1 (auto-detect teams/map) should include fuzzy matching and validation from day one.
+**Phase impact:** Phase 1 (VLR.gg scraping), Phase 4 (series prediction)
 
 ---
 
-### Pitfall 8: Round Transition Detection Failures
-**What goes wrong:** Can't reliably detect when round ends and new round begins. Miss the state reset point. Carry over state from previous round (alive counts, spike status). Log shows "spike planted" in new round that just started.
+### Pitfall 8: OCR Degradation on Older VODs (The "Bitrate Trap" Problem)
+
+**What goes wrong:** Champions 2025 VODs are 1080p60 high-bitrate. Masters Bangkok 2024 VODs are 720p30 lower-bitrate (uploaded before YouTube quality improvements). Your OCR detectors (timer, score) trained/validated on Champions data have higher error rates on Bangkok data. Timer reads as `None` more frequently, triggering ReplayDetector's "maintain current state" logic, causing over-suppression.
 
 **Why it happens:**
-- Multiple transition indicators: score change, timer reset, all players alive, tactical timeout
-- Transition timing varies (instant vs 5-second break vs tactical timeout)
-- Replay footage shown during transition
-- Score change detection requires 2-frame history (previous score, current score)
+- Older tournaments have lower video quality (bitrate, resolution, frame rate)
+- YouTube compression artifacts more severe on older uploads
+- Broadcast production quality varies by region/tournament tier
+- OCR confidence thresholds tuned for high-quality VODs fail on degraded video
 
 **Prevention:**
-1. **Multi-signal transition detection:**
-   - Score changed AND timer >1:30 (reset) AND all players alive = new round
-   - Use all three signals, not just one
-2. **State reset on transition:** Clear spike_planted, reset alive counts, invalidate economy cache
-3. **Transition cooldown:** After detecting round end, ignore events for 5 seconds (transition period)
-4. **Pre-round validation:** First frame of new round should have timer ~1:40, alive counts = 5, spike unplanted
+- **Quality stratification:** Track OCR error rate per map in metadata (`timer_ocr_success_rate`, `score_ocr_success_rate`)
+- **Quality gates:** Exclude maps with OCR success rate <85% from training (too unreliable)
+- **Adaptive thresholds:** Use more lenient OCR confidence thresholds for known low-quality tournaments
+- **Bitrate check:** Log YouTube video bitrate in manifest, flag if <2 Mbps (likely degraded quality)
+- **Manual spot-check:** Validate OCR accuracy on 3 random maps per tournament (stratified sampling)
 
 **Detection:**
-- Events logged during round transitions (e.g., kill events when all players alive)
-- Spike status carries over to new round
-- Round event counts don't reset (shows 10 kills in a single round across multiple actual rounds)
+- Map metadata shows `timer_ocr_success_rate: 0.62` (vs 0.95 for Champions maps)
+- ReplayDetector shows unusually high `frames_suppressed` for older tournament maps
+- Feature engineering produces many `None` or default values for economy features (requires timer for round detection)
 
-**Phase mapping:** Phase 1 (event detection) requires robust round boundary detection — events without correct round context are useless.
+**Phase impact:** Phase 2 (VOD processing), Phase 5 (data quality validation)
 
 ---
 
-### Pitfall 9: OCR Character Confusion on Stylized Overlays
-**What goes wrong:** VCT overlay uses custom fonts. pytesseract confuses "0" vs "O", "1" vs "I", "5" vs "S". Score reads "1O" instead of "10". Timer reads "I:30" instead of "1:30". Economy reads "S00" instead of "500".
+### Pitfall 9: Ablation Study Design Ambiguity (The "Confounded Ablation" Problem)
+
+**What goes wrong:** You want to measure contribution of "economy features" via ablation. You remove 4 economy features and retrain. Log loss degrades 0.03. You conclude economy features are valuable. But you didn't control for feature count — removing 4 features also reduces model complexity, which might independently affect performance.
 
 **Why it happens:**
-- Tesseract trained on standard fonts, VCT uses custom esports fonts
-- White text on colored/gradient backgrounds reduces contrast
-- Small text sizes (economy numbers are ~12px height)
-- Italicized or bold styling breaks OCR assumptions
+- Ablation design doesn't isolate the component being tested
+- Removing features changes both signal AND model complexity
+- Incomplete specification: ablation should specify "replace with what?" (zeros, mean imputation, exclusion, random noise)
+- Statistical thresholds not pre-registered (post-hoc p-hacking on ablation results)
 
 **Prevention:**
-1. **Character whitelisting:** Configure Tesseract to only output expected chars
-   - Timer: `tessedit_char_whitelist=0123456789:`
-   - Score: `tessedit_char_whitelist=0123456789`
-   - Economy: `tessedit_char_whitelist=0123456789,`
-2. **Image preprocessing:**
-   - Upscale 2x before OCR (larger text = better accuracy)
-   - Convert to pure black text on white background (aggressive thresholding)
-   - Denoise with morphological operations
-3. **Post-OCR validation:**
-   - Timer format: `\d:\d\d` or `\d\d:\d\d`
-   - Score format: `\d+` where value 0-13
-   - Economy format: `\d{3,5}` where value 0-9000
-4. **Template matching fallback:** For digits 0-9, create templates from known-good frames, use cv2.matchTemplate if OCR fails
+- **Replacement strategy:** Specify whether ablation is "removal" (exclude from training) or "corruption" (replace with noise/zeros)
+- **Complexity control:** If removing features, also run ablation removing random features (same count) as control
+- **Pre-registration:** Document ablation plan BEFORE running experiments (which features, how many runs, statistical test)
+- **Multiple ablations:** Run 3+ random seeds per ablation, report mean + CI (single run is high-variance)
+- **Holdout evaluation:** Evaluate all ablations on same hold-out set (not CV, which has variance across folds)
 
 **Detection:**
-- OCR output contains letters when expecting only numbers
-- Invalid timer formats ("1O:3C" instead of "10:30")
-- Score values >13 (impossible in Valorant)
-- Economy values with letters or symbols
+- Removing any 4 random features degrades performance by similar amount (not specific to economy features)
+- Ablation results flip when rerun with different random seed
+- Statistical significance test shows p=0.12 (not significant) but claimed as "valuable"
 
-**Phase mapping:** Phase 1 should implement character whitelisting and validation immediately — this is basic OCR hygiene.
+**Phase impact:** Phase 5 (model iteration, ablation studies)
 
 ---
 
-### Pitfall 10: Agent/Ultimate Detection Via CV Is Extremely Fragile
-**What goes wrong:** Agent portraits are small (~30x30px), vary by skin, partially occluded by UI. Ultimate status is a tiny colored dot. Detection accuracy <70%. You need 10 correct detections per round (5 agents * 2 teams). 70%^10 = 2.8% chance of perfect round detection.
+### Pitfall 10: Cross-Tournament Validation Misinterpretation (The "LOTO Fallacy" Problem)
+
+**What goes wrong:** You run leave-one-tournament-out (LOTO) CV. Champions 2025 held-out shows log loss 0.48. Masters Bangkok held-out shows log loss 0.72. You conclude "Masters data is low quality, exclude it." In reality, Masters has fewer stomps (more competitive matches = harder to predict), which is GOOD for generalization.
 
 **Why it happens:**
-- Agent portraits use varied skins/cosmetics (not canonical images)
-- Ultimate dot is 3-5 pixels, easily lost in compression
-- Lighting/effects vary by map and in-game time
-- Templates don't account for all skin variations
-
-**Consequences:**
-- Agent composition logs are mostly wrong
-- Ultimate tracking is random noise
-- Model trained on garbage agent features
+- Confusing "harder to predict" with "lower quality"
+- Tournament difficulty varies (group stage has stomps, playoffs have close matches)
+- LOTO conflates temporal effects, tournament tier, and match competitiveness
+- No baseline comparison (is 0.72 good or bad for competitive matches?)
 
 **Prevention:**
-1. **Defer to Phase 3:** Mark agent/ultimate extraction as "research needed" — don't attempt in Phase 1
-2. **Focus on deterministic extraction first:** Score, alive count, timer, spike status are reliable — build on those
-3. **Consider alternative data sources:**
-   - VCT API often publishes agent comps before match
-   - Manual entry of agent comp (one-time per map)
-   - Extract from pre-game agent select screen (larger, clearer images)
-4. **If attempting CV detection:**
-   - Use multiple template matching (5-10 templates per agent for different skins)
-   - Require multi-frame consensus (same agent detected 10+ frames)
-   - Allow manual override/correction
+- **Baseline comparison:** Compare model log loss to "predict 50/50" baseline per tournament
+- **Stratified analysis:** Break down LOTO by match type (group stage vs playoffs) and score margin
+- **Competitiveness metrics:** Track average score margin per tournament (narrow margins = harder prediction)
+- **Diagnostic only:** Per PROJECT.md, LOTO is "diagnostic only" — default to mixed temporal training
+- **Combine tournaments:** Don't exclude tournaments unless validation proves they harm generalization
 
 **Detection:**
-- Agent composition changes mid-round (impossible)
-- Duplicate agents on same team
-- Agents that don't exist in Valorant
-- Ultimate status flickers every frame
+- Tournament with worst LOTO log loss also has smallest average score margin (most competitive)
+- Removing "low quality" tournament from training degrades performance on hold-out set
 
-**Phase mapping:** Phase 1 should explicitly SKIP agent/ultimate detection. Mark as Phase 3 with deep research flag. Focus on reliable state extraction first.
+**Phase impact:** Phase 4 (model evaluation), Phase 5 (model iteration)
 
 ---
 
 ## Minor Pitfalls
 
-Mistakes that cause annoyance but are fixable.
+Mistakes that cause annoyance, wasted time, or minor inefficiencies.
 
-### Pitfall 11: Overwriting game_state.json Loses Historical Data
-**What goes wrong:** Current code overwrites game_state.json every frame. No event history. Can't replay or analyze past events.
+### Pitfall 11: Duplicate Map Processing (The "Wasted Compute" Problem)
 
-**Prevention:** Append events to log file (JSONL or SQLite), don't overwrite.
-
-**Phase mapping:** Phase 1 fixes this immediately — persistent event log is core requirement.
-
----
-
-### Pitfall 12: No Match Session Management
-**What goes wrong:** Can't distinguish between maps in a BO3 series. Event log conflates all maps into single stream.
-
-**Prevention:** Implement match_id, map_number metadata. Detect map transitions (loading screen, score reset to 0-0).
-
-**Phase mapping:** Phase 2 (multi-match support) adds session management.
-
----
-
-### Pitfall 13: Stream Buffering Causes Frame Duplicates or Skips
-**What goes wrong:** Network issues cause streamlink to return duplicate frames or skip frames. Event detection sees same frame twice or misses transition.
+**What goes wrong:** You scrape VLR.gg and find 180 match results. Some matches have 3 maps, some have 5 maps. You generate 180 "map processing jobs" but 60 of them are duplicates (same YouTube URL, same timestamp). You waste 10 hours reprocessing maps you already have.
 
 **Prevention:**
-- Hash frames, skip if identical to previous
-- Track frame timestamps, warn if gap >500ms
+- **Deduplication check:** Before processing, check if `map_id` already exists in `data/processed/`
+- **Manifest lookup:** Query processing manifest for existing entries with same YouTube URL + timestamp
+- **Dry-run mode:** Scraper outputs "would process 142 new maps, skip 38 existing" before starting 20-hour job
 
-**Phase mapping:** Phase 2 adds stream health monitoring.
+**Detection:**
+- Processing log shows "Processing map_12345... already exists, skipping"
+- Two map directories have identical YouTube URL in metadata
 
----
-
-### Pitfall 14: No Graceful Degradation When OCR Fails
-**What goes wrong:** If timer OCR fails (returns empty string), entire frame processing throws exception. Miss events during OCR failures.
-
-**Prevention:**
-- Return None for failed OCR, keep processing other elements
-- Use last known valid value with confidence decay
-- Log OCR failures for monitoring
-
-**Phase mapping:** Phase 1 adds error handling to all OCR operations.
+**Phase impact:** Phase 2 (VOD processing pipeline)
 
 ---
 
-### Pitfall 15: Config.py vs Vision_Engine.py ROI Duplication
-**What goes wrong:** Two different ROI coordinate systems in codebase. config.py defines one set, vision_engine.py defines another. They conflict (different coordinates for same elements). Unclear which is "correct."
+### Pitfall 12: Inconsistent Map Identifiers (The "Join Key Hell" Problem)
+
+**What goes wrong:** VLR.gg uses match ID `vlr-12345`. YouTube URL is `youtube.com/watch?v=abc123`. Valoscribe generates map ID `map_20241103_TL_vs_FNC_Haven`. Your manifest tries to join these three identifiers and fails because there's no consistent key.
 
 **Prevention:**
-- Consolidate to single source of truth (config.py)
-- vision_engine.py should import from config.py
-- Delete duplicate definitions
+- **Canonical ID strategy:** Use VLR.gg match ID as primary key, store YouTube URL and Valoscribe map_id as fields
+- **Bidirectional mapping:** Manifest includes both `vlr_match_id → map_id` and `map_id → vlr_match_id`
+- **ID validation:** Assert all three IDs present before marking processing as complete
 
-**Phase mapping:** Phase 1 cleanup — fix before building on this foundation.
+**Detection:**
+- Training pipeline can't match VLR.gg metadata to Valoscribe features
+- Manual joins require string matching on team names (fragile)
+
+**Phase impact:** Phase 1 (scraping), Phase 2 (processing), Phase 3 (data ingestion)
+
+---
+
+### Pitfall 13: Windows Path Length Limit (The "MAX_PATH" Problem)
+
+**What goes wrong:** You generate map IDs like `20241103_Team_Liquid_vs_Fnatic_Haven_Map3_VCT_Champions_2025`. Full path is `D:\Git\valoscribe\data\processed\20241103_Team_Liquid_vs_Fnatic_Haven_Map3_VCT_Champions_2025\events.jsonl` which exceeds Windows MAX_PATH (260 characters). Processing fails with cryptic error.
+
+**Prevention:**
+- **Short map IDs:** Use date + sequential ID (`20241103_001`, `20241103_002`) instead of descriptive names
+- **Path length check:** Validate generated path <240 characters before processing
+- **Enable long paths:** Set Windows registry `LongPathsEnabled=1` (requires admin)
+
+**Detection:**
+- File operations fail with "path too long" or "system cannot find the path"
+- `os.path.exists()` returns False for path that should exist
+
+**Phase impact:** Phase 2 (VOD processing)
+
+---
+
+### Pitfall 14: Agent Composition Data Temptation (The "Feature Creep" Problem)
+
+**What goes wrong:** VLR.gg provides agent composition data (which agents each player picked). You're tempted to add "agent pick rate" features. You add 10 agent features. Model performance improves on CV. You deploy. Next patch nerfs Jett. Model degrades catastrophically.
+
+**Prevention:**
+- **Stick to game mechanics:** Per PROJECT.md decision, exclude agent features due to meta instability
+- **Deferred decision:** Mark agent features as "v4 research topic" after validating game mechanics approach
+- **Meta stability check:** IF adding agent features, use patch-relative encoding and validate across patch boundaries
+
+**Detection:**
+- Model performance degrades after game patch
+- Feature importance shows agent features dominate (unstable signal)
+
+**Phase impact:** Phase 3 (feature engineering), Phase 5 (model iteration)
 
 ---
 
@@ -394,58 +401,45 @@ Mistakes that cause annoyance but are fixable.
 
 | Phase Topic | Likely Pitfall | Mitigation |
 |-------------|---------------|------------|
-| Phase 1: Event Detection | Replay footage creating phantom events | Implement replay detection from day one |
-| Phase 1: Event Detection | State debouncing failures | Require 3-frame consensus for state changes |
-| Phase 1: Event Detection | Round transition detection | Multi-signal detection (score + timer + alive) |
-| Phase 2: Economy Events | Buy phase vs combat phase conflation | Build phase detection state machine first |
-| Phase 2: Multi-Match | Hardcoded ROI coordinates breaking | Add overlay version detection before running multiple matches |
-| Phase 2: Team/Map Auto-Detect | OCR typos propagating | Fuzzy match against whitelist, require confirmation |
-| Phase 3: Agent/Ultimate Detection | CV detection too fragile | Deep research required — may need alternative approach |
-| Phase 3: Agent/Ultimate Detection | Template matching with skin variations | Consider manual entry or API fallback |
+| VLR.gg scraping | VOD availability decay (#1), schema drift (#6) | Validate URLs before processing, scrape + process within 48hr |
+| VOD processing pipeline | Batch failure opacity (#2), OCR degradation (#8) | Processing manifest with atomic completion markers, quality metrics per map |
+| Data quality validation | ReplayDetector failure (#3), duplicate maps (#11) | Distribution validation, spot-check protocol, deduplication check |
+| Feature engineering | Agent composition temptation (#14), identifier inconsistency (#12) | Stick to game mechanics, canonical ID strategy |
+| Model evaluation | Temporal validation collapse (#4), LOTO misinterpretation (#10) | Confidence intervals, baseline comparison, diagnostic-only LOTO |
+| Model iteration | Meta drift blindness (#5), ablation ambiguity (#9) | Recency weighting, rolling window training, pre-registered ablation plans |
+| Match format handling | BO3 vs BO5 inconsistency (#7) | Extract format from VLR.gg, validate map counts |
+| Infrastructure | Windows path limit (#13) | Short map IDs, long paths enabled |
 
 ---
 
 ## Sources
 
-**HIGH confidence:** Based on analysis of existing codebase at d:\Git\Val-Prediciton-Model
-- config.py ROI definitions and thresholds
-- vision_engine.py extraction methods
-- backend.py processing loop and state handling
+### Data Quality & Scaling
+- [Evaluation of decided sample size in ML applications](https://pmc.ncbi.nlm.nih.gov/articles/PMC9926644/) — Minimum N=500-1000 to mitigate overfitting
+- [Techniques for ML with small datasets](https://www.trustbit.tech/blog/2021/06/30/techniques-and-pitfalls-for-ml-training-with-small-data-sets) — Small dataset pitfalls
+- [Data drift detection guide](https://labelyourdata.com/articles/machine-learning/data-drift) — Concept drift and monitoring
+- [Model drift in ML systems](https://www.evidentlyai.com/ml-in-production/data-drift) — Data vs concept drift
 
-**MEDIUM confidence:** Domain expertise in CV-based esports analysis
-- Replay detection is a known critical issue in all esports CV projects
-- OCR reliability on stylized game overlays is well-documented challenge
-- State debouncing is standard requirement for any CV state machine
+### Batch Processing & Infrastructure
+- [Batch error handling strategies](https://learn.microsoft.com/en-us/azure/batch/error-handling) — Fatal vs non-fatal errors, recovery
+- [Handling batch failures](https://www.linkedin.com/advice/1/how-can-you-handle-batch-processing-failures-ouoke) — Resumable processing, checkpointing
 
-**Research gaps:**
-- Exact VCT overlay update schedule (requires monitoring VCT production over multiple events)
-- Optimal debouncing parameters (requires empirical testing on real match footage)
-- Agent/ultimate detection feasibility (flagged for Phase 3 deep research)
+### Video & OCR Processing
+- [OCR bottlenecks and VLM solutions](https://dzone.com/articles/from-ocr-bottlenecks-to-structured-understanding) — Token explosion, scalability
+- [Video OCR optimization](https://www.mdpi.com/2227-7390/12/7/1036) — Image quality impact on OCR
+- [Twitch/YouTube VOD storage limits](https://streamrecorder.io/blog/your-ultimate-guide-to-twitch-vods) — VOD retention policies
 
----
+### Esports & Web Scraping
+- [VLR.gg scraping community discussion](https://www.vlr.gg/30777/is-data-scraping-allowed) — Rate limiting, ToS
+- [Esports data scraping pitfalls](https://esportsinsider.com/2023/12/data-scraping-odds-esports-bayes-esports) — Legal, quality, maintenance issues
+- [Game patches impact on predictions](https://iwantmedia.com/the-role-of-game-patches-and-updates-in-esports-betting-decisions/) — Meta shifts and prediction decay
+- [Esports match formats](https://www.esports.net/wiki/guides/esports-tournament-formats/) — BO3, BO5, tournament structures
 
-## Implementation Priority
+### Experimental Design
+- [Ablation study best practices](https://www.emergentmind.com/topics/controlled-ablation-study) — Misalignment, ambiguous boundaries
+- [ABLATOR framework](https://proceedings.mlr.press/v224/fostiropoulos23a/fostiropoulos23a.pdf) — Horizontal scaling of ablation experiments
+- [Time-series cross-validation](https://medium.com/@pacosun/respect-the-order-cross-validation-in-time-series-7d12beab79a1) — Temporal validation best practices
 
-**Must address in Phase 1 (foundational):**
-1. Replay detection
-2. State debouncing (3-frame consensus)
-3. Round transition detection
-4. Persistent event logging (replace game_state.json overwriting)
-5. OCR character whitelisting and validation
-6. Consolidate config.py vs vision_engine.py ROI definitions
-
-**Must address in Phase 2 (before multi-match):**
-1. Overlay version detection
-2. Buy phase vs combat phase state machine
-3. Team/map auto-detection with fuzzy matching
-4. Stream quality monitoring
-
-**Defer to Phase 3 (requires research):**
-1. Agent composition extraction
-2. Ultimate status tracking
-
-**Continuous monitoring:**
-- OCR accuracy rates per element type
-- Event detection precision/recall (requires ground truth from manual annotation)
-- False positive rate (especially from replays)
-- Stream quality correlation with accuracy
+### Metadata & Sports Data
+- [Sports metadata problems](https://www.metabroadcast.com/2025/07/16/sports-programming-has-a-metadata-problem/) — Inconsistent identifiers, schema
+- [Esports tournament formats 2026](https://escharts.com/news/match-formats-are-used-esports) — BO1, BO3, BO5 prevalence

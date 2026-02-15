@@ -1,1340 +1,649 @@
-# Architecture Patterns: CV-Based Event Detection Pipeline
+# Architecture Patterns: VLR.gg Scraping and Scaled Processing
 
-**Domain:** Esports event logging from broadcast video
-**Researched:** 2026-02-12
-**Confidence:** HIGH (based on established CV pipeline patterns, event sourcing, and state machine architectures)
+**Domain:** Data pipeline scaling for VCT match prediction
+**Researched:** 2026-02-14
+**Confidence:** HIGH
 
 ## Executive Summary
 
-Transforming a stateless frame-by-frame CV extractor into an event-based logging system requires four core architectural patterns:
+The v3 data scaling pipeline integrates VLR.gg scraping with existing Valoscribe processing and prediction infrastructure. The architecture adds 5 new components while preserving existing data flows. Key insight: treat VLR.gg scraping as **discovery layer** (what to process) and Valoscribe as **transformation layer** (VOD → events), with the existing prediction pipeline remaining unchanged downstream.
 
-1. **State Diffing** - Compare consecutive frames to detect changes
-2. **Event Emission** - Transform state changes into typed events
-3. **Persistent Event Store** - Append-only log with match session management
-4. **Extensible Event Types** - Schema that supports evolution without breaking changes
+**Integration strategy:** Separate output directories (existing 71 maps vs. new scraped maps) until feature engineering, then merge at dataset level. This preserves existing experiments while scaling.
 
-The recommended architecture builds **on top of** existing code by wrapping `VCTVisionEngine` with new components rather than rewriting it.
-
----
-
-## Recommended Architecture
-
-### High-Level Component Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         MATCH SESSION                                │
-│  (Metadata: teams, map, start_time, match_id)                       │
-└─────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────┐        ┌─────────────────┐        ┌──────────────┐
-│  GameWatcher    │───────▶│  EventPipeline  │───────▶│  EventStore  │
-│  (Frame Loop)   │ frames │  (Orchestrator) │ events │  (Persistent)│
-└─────────────────┘        └─────────────────┘        └──────────────┘
-                                    │
-                    ┌───────────────┼───────────────┐
-                    ▼               ▼               ▼
-            ┌──────────────┐ ┌─────────────┐ ┌──────────────┐
-            │ StateTracker │ │ EventEmitter│ │ MetadataOCR  │
-            │  (Differs)   │ │ (Factories) │ │  (Teams/Map) │
-            └──────────────┘ └─────────────┘ └──────────────┘
-                    │
-                    ▼
-            ┌──────────────┐
-            │VCTVisionEngine│
-            │  (Existing)   │
-            └──────────────┘
-```
+## Current Architecture (v2 Baseline)
 
 ### Data Flow
-
 ```
-1. GameWatcher.run() → reads frame at 6fps
-2. EventPipeline.process_frame(frame, timestamp) orchestrates:
-   a. VCTVisionEngine.analyze(frame) → raw state dict
-   b. StateTracker.update(state) → compares with previous state
-   c. StateTracker.detect_changes() → list of state diffs
-   d. EventEmitter.emit_events(diffs) → typed Event objects
-   e. EventStore.append(events) → writes to persistent log
-3. StateTracker caches current state for next frame
-4. Loop continues until match ends
+Valoscribe VOD → JSONL events → Data loader → Feature pipeline → Model → Predictions
+                  (manual)        (src/data)    (src/features)   (src/modeling)
 ```
 
----
+### Component Inventory
+| Component | Location | Responsibility | Inputs | Outputs |
+|-----------|----------|---------------|--------|---------|
+| **Valoscribe** | D:\Git\valoscribe | VOD processing (CV + OCR) | YouTube URL, metadata.json | events.jsonl, frames.csv, metadata.json |
+| **Data Loader** | src/data/loader.py | Discover and load maps | Valoscribe output dir | MapData objects |
+| **Feature Pipeline** | src/features/pipeline.py | Extract features | MapData list | DataFrame (features + target) |
+| **Feature Registry** | src/features/registry.py | Named feature sets | YAML config | Feature name lists |
+| **Model Trainer** | src/modeling/baseline.py | Train models | X, y, groups | Trained model + metrics |
+| **Experiment Runner** | src/modeling/experiment.py | Full pipeline orchestration | Config, data | Experiment results |
+| **Series Predictor** | src/modeling/series.py | BO3/BO5 predictions | Map probabilities | Series probabilities |
 
-## Component Boundaries
+### Data Formats
+```
+Valoscribe output:
+  {map_id}/
+    events.jsonl      # One event per line (JSON objects)
+    frames.csv        # Per-frame state snapshots
+    metadata.json     # Teams, map name, date, validation results
 
-### 1. VCTVisionEngine (Existing - No Changes)
+Feature pipeline:
+  DataFrame columns: map_id, [34 features], map_winner, series_id
 
-**Responsibility:** Extract raw game state from a single frame
-
-**Interface:**
-```python
-def analyze(frame: np.ndarray) -> Dict[str, Any]:
-    return {
-        'score_left': int,
-        'score_right': int,
-        'alive_left': int,
-        'alive_right': int,
-        'spike_planted': bool,
-        'eco_left': int,  # if available
-        'eco_right': int
-    }
+Experiment results:
+  JSON: cv_results, shap_analysis, thesis_validation, calibration_validation
 ```
 
-**No modifications needed.** This component remains stateless and reusable.
+## New Architecture (v3 Extension)
 
----
-
-### 2. StateTracker (New Component)
-
-**Responsibility:** Maintain previous frame state and detect changes
-
-**Interface:**
-```python
-class StateTracker:
-    def __init__(self):
-        self.current_state: Optional[GameState] = None
-        self.previous_state: Optional[GameState] = None
-
-    def update(self, raw_state: Dict[str, Any]) -> List[StateChange]:
-        """
-        Compares new state with previous state.
-        Returns list of detected changes.
-        """
-        changes = []
-
-        if self.current_state is None:
-            # First frame - no diffs yet
-            self.current_state = GameState.from_dict(raw_state)
-            return []
-
-        # Shift states
-        self.previous_state = self.current_state
-        self.current_state = GameState.from_dict(raw_state)
-
-        # Detect changes
-        changes.extend(self._detect_score_changes())
-        changes.extend(self._detect_alive_changes())
-        changes.extend(self._detect_spike_changes())
-        changes.extend(self._detect_economy_changes())
-
-        return changes
-
-    def _detect_score_changes(self) -> List[StateChange]:
-        """Score increase = round ended"""
-        changes = []
-
-        if self.current_state.score_left > self.previous_state.score_left:
-            changes.append(StateChange(
-                type='ROUND_END',
-                winner='left',
-                new_score=(self.current_state.score_left, self.current_state.score_right)
-            ))
-
-        if self.current_state.score_right > self.previous_state.score_right:
-            changes.append(StateChange(
-                type='ROUND_END',
-                winner='right',
-                new_score=(self.current_state.score_left, self.current_state.score_right)
-            ))
-
-        return changes
-
-    def _detect_alive_changes(self) -> List[StateChange]:
-        """Alive count decrease = kill(s)"""
-        changes = []
-
-        left_delta = self.current_state.alive_left - self.previous_state.alive_left
-        if left_delta < 0:
-            changes.append(StateChange(
-                type='KILLS',
-                team='left',
-                count=abs(left_delta),
-                remaining_alive=self.current_state.alive_left
-            ))
-
-        right_delta = self.current_state.alive_right - self.previous_state.alive_right
-        if right_delta < 0:
-            changes.append(StateChange(
-                type='KILLS',
-                team='right',
-                count=abs(right_delta),
-                remaining_alive=self.current_state.alive_right
-            ))
-
-        return changes
-
-    def _detect_spike_changes(self) -> List[StateChange]:
-        """Spike status transitions"""
-        changes = []
-
-        # Planted: False → True
-        if not self.previous_state.spike_planted and self.current_state.spike_planted:
-            changes.append(StateChange(type='SPIKE_PLANTED'))
-
-        # Defused: True → False (with no score change)
-        # Note: If score changed, round ended - spike defuse is implicit
-        if self.previous_state.spike_planted and not self.current_state.spike_planted:
-            # Check if score changed (already handled by round_end)
-            if self.current_state.score_left == self.previous_state.score_left and \
-               self.current_state.score_right == self.previous_state.score_right:
-                changes.append(StateChange(type='SPIKE_DEFUSED'))
-
-        return changes
-
-    def _detect_economy_changes(self) -> List[StateChange]:
-        """Economy threshold crossings (eco/force/full buy)"""
-        # Define buy thresholds
-        ECO_THRESHOLD = 10000
-        FORCE_THRESHOLD = 18000
-
-        changes = []
-
-        # Left team economy shift
-        prev_left_tier = self._economy_tier(self.previous_state.eco_left)
-        curr_left_tier = self._economy_tier(self.current_state.eco_left)
-        if prev_left_tier != curr_left_tier:
-            changes.append(StateChange(
-                type='ECONOMY_SHIFT',
-                team='left',
-                from_tier=prev_left_tier,
-                to_tier=curr_left_tier,
-                total_credits=self.current_state.eco_left
-            ))
-
-        # Right team economy shift
-        prev_right_tier = self._economy_tier(self.previous_state.eco_right)
-        curr_right_tier = self._economy_tier(self.current_state.eco_right)
-        if prev_right_tier != curr_right_tier:
-            changes.append(StateChange(
-                type='ECONOMY_SHIFT',
-                team='right',
-                from_tier=prev_right_tier,
-                to_tier=curr_right_tier,
-                total_credits=self.current_state.eco_right
-            ))
-
-        return changes
-
-    def _economy_tier(self, credits: int) -> str:
-        """Classify buy type"""
-        if credits < 10000:
-            return 'ECO'
-        elif credits < 18000:
-            return 'FORCE'
-        else:
-            return 'FULL'
+### Enhanced Data Flow
+```
+VLR.gg event page → VLREventScraper → Manifest (VODRecords) → VODOrchestrator
+                     (discover)         (state tracking)       (batch process)
+                                                                     ↓
+                    ┌────────────────────────────────────────────────┘
+                    ↓
+        Valoscribe (batch) → JSONL events → DatasetBuilder → Feature pipeline → Model
+         (process VODs)       (per map)       (merge sources)   (existing)      (existing)
 ```
 
-**Key Design Decisions:**
-- **Stateful but simple** - Only tracks last 2 frames (previous + current)
-- **Change detection logic isolated** - Easy to add new detectors without touching other code
-- **Returns typed changes** - Not raw dicts, but structured `StateChange` objects
+### New Components
 
----
+#### 1. VLREventScraper (Discovery Layer)
+**File:** `src/scraping/vlr_events.py`
+**Responsibility:** Discover match URLs and VOD metadata from VLR.gg tournament pages
 
-### 3. EventEmitter (New Component)
+**Key methods:**
+- `discover_match_urls(event_url)` → List of match URLs
+- `discover_vods(event_url, manifest, tournament_name)` → Count of new VODs added
 
-**Responsibility:** Transform `StateChange` objects into timestamped `Event` objects with match context
+**Integration point:** Calls Valoscribe's `scrape_match()` to extract per-match metadata (teams, maps, YouTube URLs)
 
-**Interface:**
-```python
-class EventEmitter:
-    def __init__(self, match_id: str):
-        self.match_id = match_id
-
-    def emit_events(self, changes: List[StateChange], timestamp: float) -> List[Event]:
-        """
-        Converts state changes into Event objects with metadata.
-        """
-        events = []
-
-        for change in changes:
-            event = Event(
-                match_id=self.match_id,
-                timestamp=timestamp,
-                event_type=change.type,
-                data=change.to_dict()
-            )
-            events.append(event)
-
-        return events
+**Data flow:**
+```
+VLR.gg event URL → BeautifulSoup scraping → Match URLs
+                                                ↓
+                    Valoscribe scrape_match() → Match metadata (teams, maps, VOD URLs)
+                                                ↓
+                                      VODRecord creation → Manifest
 ```
 
-**Event Schema:**
+**Rate limiting:** 1.5 seconds between requests (polite to VLR.gg servers)
+
+#### 2. ProcessingManifest (State Management)
+**File:** `src/scraping/manifest.py`
+**Responsibility:** Track VOD processing state across runs (resumable)
+
+**Key structures:**
 ```python
 @dataclass
-class Event:
-    match_id: str           # Links event to match session
-    timestamp: float        # Unix timestamp (from frame)
-    event_type: str         # 'ROUND_END', 'KILLS', 'SPIKE_PLANTED', etc.
-    data: Dict[str, Any]    # Type-specific payload
-
-    def to_json(self) -> str:
-        """Serialize to JSON for storage"""
-        return json.dumps({
-            'match_id': self.match_id,
-            'timestamp': self.timestamp,
-            'event_type': self.event_type,
-            'data': self.data
-        })
+class VODRecord:
+    vod_id: str                  # "{vlr_match_id}_map{N}"
+    youtube_url: str
+    vlr_match_url: str
+    teams: list[str]
+    map_name: str
+    map_number: int
+    tournament: str
+    date: str
+    patch_version: str | None
+    status: StatusType           # pending/downloading/processing/complete/failed/skipped
+    map_id: str | None           # Valoscribe output directory name
+    error_message: str | None
+    retry_count: int
+    # Timestamps for progress tracking
+    created_at: str
+    started_at: str | None
+    completed_at: str | None
+    processing_time_seconds: float | None
 ```
 
-**Why separate StateTracker and EventEmitter?**
-- **Single Responsibility:** StateTracker = diffing logic, EventEmitter = serialization/formatting
-- **Testability:** Can test diffing without event format concerns
-- **Extensibility:** Can add event enrichment (e.g., team names) in EventEmitter without touching StateTracker
+**Persistence:** Atomic JSON writes (temp file + rename) to prevent corruption on crash
 
----
+**Integration point:** Updated by VODOrchestrator after each status change (downloading → processing → complete)
 
-### 4. EventStore (New Component)
+#### 3. VODOrchestrator (Batch Processor)
+**File:** `src/scraping/orchestrator.py`
+**Responsibility:** Orchestrate VOD downloading → Valoscribe processing → cleanup
 
-**Responsibility:** Persistent, append-only event log per match
+**Pipeline stages:**
+1. **Discovery:** Call VLREventScraper to populate manifest
+2. **Download:** Call Valoscribe download command (wraps yt-dlp)
+3. **Process:** Call Valoscribe orchestrate process-vod
+4. **Cleanup:** Delete downloaded VOD files (multi-GB)
 
-**Interface:**
+**Key method:**
 ```python
-class EventStore:
-    def __init__(self, storage_dir: str = "match_logs"):
-        self.storage_dir = Path(storage_dir)
-        self.storage_dir.mkdir(exist_ok=True)
-        self.current_match_file: Optional[Path] = None
-
-    def start_match(self, match_id: str, metadata: MatchMetadata) -> None:
-        """
-        Creates a new event log file for a match.
-        Writes metadata header.
-        """
-        filename = f"{match_id}_{metadata.start_time}.jsonl"
-        self.current_match_file = self.storage_dir / filename
-
-        # Write metadata as first line
-        with open(self.current_match_file, 'w') as f:
-            f.write(json.dumps({
-                'type': 'MATCH_START',
-                'match_id': match_id,
-                'metadata': metadata.to_dict()
-            }) + '\n')
-
-    def append(self, events: List[Event]) -> None:
-        """
-        Appends events to current match log (JSONL format).
-        """
-        if not self.current_match_file:
-            raise RuntimeError("No active match session")
-
-        with open(self.current_match_file, 'a') as f:
-            for event in events:
-                f.write(event.to_json() + '\n')
-
-    def end_match(self, metadata: Optional[Dict] = None) -> None:
-        """
-        Writes MATCH_END event and closes session.
-        """
-        if self.current_match_file:
-            with open(self.current_match_file, 'a') as f:
-                f.write(json.dumps({
-                    'type': 'MATCH_END',
-                    'timestamp': time.time(),
-                    'metadata': metadata or {}
-                }) + '\n')
-
-            self.current_match_file = None
+process_single_vod(record: VODRecord) -> bool:
+    1. Update manifest: status = "downloading"
+    2. Scrape series metadata from VLR.gg (if not cached)
+    3. Download VOD via Valoscribe download command
+    4. Update manifest: status = "processing"
+    5. Process VOD through Valoscribe orchestrate process-vod
+    6. Update manifest: status = "complete", map_id = output_dir_name
+    7. Delete VOD file (save disk space)
+    8. Rate limit delay before next VOD
 ```
 
-**Storage Format: JSONL (JSON Lines)**
-- One event per line
-- Easy to stream/parse incrementally
-- Human-readable for debugging
-- Append-only = crash-safe
+**Error handling:** Retry with exponential backoff, skip after max retries, atomic manifest saves
 
-**File Structure:**
-```
-match_logs/
-  match_001_1675893023.jsonl
-  match_002_1675897654.jsonl
-  ...
-```
+**Integration point:** Calls Valoscribe CLI as subprocess, outputs to separate directory (`data/processing/processed/`)
 
-**Example JSONL Content:**
-```jsonl
-{"type": "MATCH_START", "match_id": "match_001", "metadata": {"teams": ["G2", "NRG"], "map": "Bind"}}
-{"match_id": "match_001", "timestamp": 1675893025.3, "event_type": "ROUND_END", "data": {"winner": "left", "new_score": [1, 0]}}
-{"match_id": "match_001", "timestamp": 1675893089.7, "event_type": "KILLS", "data": {"team": "right", "count": 2, "remaining_alive": 3}}
-{"match_id": "match_001", "timestamp": 1675893091.2, "event_type": "SPIKE_PLANTED", "data": {}}
-{"type": "MATCH_END", "timestamp": 1675893500.0, "metadata": {"final_score": [13, 10]}}
-```
+#### 4. ProcessingConfig (Configuration)
+**File:** `src/scraping/config.py`
+**Responsibility:** Environment-based configuration for pipeline
 
----
-
-### 5. EventPipeline (New Component - Orchestrator)
-
-**Responsibility:** Coordinate frame processing, state tracking, event emission, and storage
-
-**Interface:**
+**Key settings:**
 ```python
-class EventPipeline:
-    def __init__(self, match_id: str, metadata: MatchMetadata):
-        self.match_id = match_id
-        self.vision = VCTVisionEngine()
-        self.tracker = StateTracker()
-        self.emitter = EventEmitter(match_id)
-        self.store = EventStore()
+valoscribe_repo: Path = "D:/Git/valoscribe"
+output_dir: Path = "data/processing/processed"  # Separate from existing 71 maps
+download_dir: Path = "data/processing/downloads"
+manifest_path: Path = "data/processing/manifest.json"
+metadata_dir: Path = "data/processing/metadata"
 
-        # Start match session
-        self.store.start_match(match_id, metadata)
-
-    def process_frame(self, frame: np.ndarray, timestamp: float) -> List[Event]:
-        """
-        Full pipeline: frame → state → changes → events → storage
-        """
-        # 1. Extract raw state
-        raw_state = self.vision.analyze(frame)
-
-        # 2. Detect changes
-        changes = self.tracker.update(raw_state)
-
-        # 3. Emit events
-        events = self.emitter.emit_events(changes, timestamp)
-
-        # 4. Persist events
-        if events:
-            self.store.append(events)
-
-        return events
-
-    def end_match(self):
-        """Finalize match log"""
-        self.store.end_match()
+download_delay_seconds: float = 10.0        # YouTube rate limiting
+processing_timeout_seconds: int = 7200      # 2 hours per VOD
+max_retries: int = 2
+delete_vod_after_processing: bool = True
 ```
 
-**Why an orchestrator component?**
-- **Encapsulation:** GameWatcher doesn't need to know about state tracking or event emission
-- **Testability:** Can test pipeline with mock frames
-- **Reusability:** Same pipeline can be used for live streams or VOD processing
+**Integration point:** Loaded by orchestrator and scraper for paths and timeouts
 
----
+#### 5. DatasetBuilder (Merge Layer)
+**File:** `src/data/builder.py` (NEW - to be created in v3)
+**Responsibility:** Merge existing maps + newly scraped maps into unified dataset
 
-### 6. MatchMetadata Extractor (New Component)
-
-**Responsibility:** Auto-detect team names and map from broadcast overlay
-
-**Interface:**
+**Proposed interface:**
 ```python
-class MetadataExtractor:
-    def __init__(self):
-        # ROIs for metadata (1920x1080 VCT layout)
-        self.ROI_TEAM_LEFT = (50, 100, 200, 400)   # Team name left
-        self.ROI_TEAM_RIGHT = (50, 100, 1520, 1720) # Team name right
-        self.ROI_MAP_NAME = (1000, 1050, 800, 1120) # Map name (varies by broadcast)
+class DatasetBuilder:
+    def __init__(self,
+                 existing_maps_dir: Path,      # D:\Git\valoscribe\data\processed (71 maps)
+                 new_maps_dir: Path,           # data/processing/processed (scraped maps)
+                 manifest: ProcessingManifest):
+        """Discover maps from multiple sources."""
 
-    def extract_teams(self, frame: np.ndarray) -> Tuple[str, str]:
-        """
-        OCR team names from overlay.
-        Returns (left_team, right_team).
-        """
-        left_crop = frame[self.ROI_TEAM_LEFT[0]:self.ROI_TEAM_LEFT[1],
-                          self.ROI_TEAM_LEFT[2]:self.ROI_TEAM_LEFT[3]]
-        right_crop = frame[self.ROI_TEAM_RIGHT[0]:self.ROI_TEAM_RIGHT[1],
-                           self.ROI_TEAM_RIGHT[2]:self.ROI_TEAM_RIGHT[3]]
-
-        left_team = self._ocr_text(left_crop).strip()
-        right_team = self._ocr_text(right_crop).strip()
-
-        return left_team, right_team
-
-    def extract_map(self, frame: np.ndarray) -> str:
-        """
-        OCR map name from overlay.
-        """
-        map_crop = frame[self.ROI_MAP_NAME[0]:self.ROI_MAP_NAME[1],
-                         self.ROI_MAP_NAME[2]:self.ROI_MAP_NAME[3]]
-
-        map_name = self._ocr_text(map_crop).strip()
-
-        # Validate against known maps
-        known_maps = ['Bind', 'Haven', 'Split', 'Ascent', 'Icebox', 'Breeze', 'Fracture', 'Pearl', 'Lotus', 'Sunset', 'Abyss']
-        for known in known_maps:
-            if known.lower() in map_name.lower():
-                return known
-
-        return map_name  # Return raw if no match
-
-    def _ocr_text(self, img_crop: np.ndarray) -> str:
-        """Generic OCR for text"""
-        gray = cv2.cvtColor(img_crop, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
-
-        # Allow letters and spaces
-        config = r'--oem 3 --psm 7'
-        text = pytesseract.image_to_string(thresh, config=config)
-
-        return text
+    def build_combined_dataset(self,
+                               feature_set: str,
+                               quality_threshold: float = 0.8) -> pd.DataFrame:
+        """Load all maps, filter by quality, extract features."""
+        # 1. Discover maps from both directories
+        # 2. Load with existing loader (src/data/loader.py)
+        # 3. Filter by quality score
+        # 4. Extract features via FeaturePipeline
+        # 5. Add metadata: source (existing vs. scraped), tournament, date
+        # 6. Return unified DataFrame ready for experiments
 ```
 
-**Usage Pattern:**
-```python
-# At match start
-extractor = MetadataExtractor()
-left_team, right_team = extractor.extract_teams(first_frame)
-map_name = extractor.extract_map(first_frame)
+**Integration point:** Called by experiment runners to get training data
 
-metadata = MatchMetadata(
-    teams=[left_team, right_team],
-    map=map_name,
-    start_time=time.time()
+**Why separate from existing loader:** Existing loader assumes single directory, minimal changes preserves v2 experiments
+
+## Integration Points
+
+### 1. Valoscribe Integration (External Dependency)
+
+**Current interface:**
+- Valoscribe lives at `D:\Git\valoscribe`
+- Actively developed alongside this repo
+- Provides VLRScraper for match page scraping
+
+**New interface requirements:**
+```bash
+# 1. Download VOD (wraps yt-dlp)
+python -m valoscribe download <YOUTUBE_URL> --output <DIR> --overwrite
+
+# 2. Scrape match metadata (NEW in v3 - may need to add)
+python -m valoscribe scrape-vlr <VLR_MATCH_URL> --output <METADATA_FILE>
+
+# 3. Split series metadata into per-map files (NEW in v3)
+python -m valoscribe split-metadata <SERIES_JSON> --output-dir <MAP_METADATA_DIR>
+
+# 4. Process single VOD with metadata
+python -m valoscribe orchestrate process-vod <VOD_FILE> <MAP_METADATA_FILE> --output <DIR> --quiet
+```
+
+**What exists:** Commands 1 and 4 likely exist (download + process-vod)
+**What needs verification:** Commands 2 and 3 (scraping + splitting) may need to be added to Valoscribe CLI
+
+**Risk mitigation:** Valoscribe is actively developed alongside this repo. If CLI commands don't exist, we add them to Valoscribe (single source of truth for VOD processing).
+
+### 2. Data Loader Integration (Minimal Changes)
+
+**Current behavior:**
+- `discover_maps(data_dir)` scans single directory
+- Returns `{map_id: Path}` dict
+- `load_all_maps(data_dir)` loads from discovered maps
+
+**New behavior (proposed in DatasetBuilder):**
+```python
+# Load from multiple directories
+existing_maps = discover_maps(Path("D:/Git/valoscribe/data/processed"))
+new_maps = discover_maps(Path("data/processing/processed"))
+all_maps = {**existing_maps, **new_maps}  # Merge dicts
+
+# Load with existing loader (no changes needed)
+results = load_all_maps_from_dict(all_maps)  # Pass pre-discovered map dict
+```
+
+**Why minimal change:** Existing loader has `load_map(map_dir)` that works on single map. Just call it on merged dict.
+
+### 3. Feature Pipeline Integration (No Changes)
+
+**Current behavior:**
+- `FeaturePipeline.extract_map_dataset(map_data_list)` → DataFrame
+- Works on list of MapData objects (agnostic to source)
+
+**New behavior:**
+- Same interface, just receives larger `map_data_list` (existing 71 + new scraped maps)
+
+**Why no change:** Feature pipeline is already decoupled from data source
+
+### 4. Experiment Runner Integration (Minor Config Change)
+
+**Current behavior:**
+- Experiments read from single data directory via environment variable
+- Scripts like `run_real_experiment.py` hardcode `VALOSCRIBE_DATA_DIR`
+
+**New behavior:**
+```python
+# In experiment script
+from src.data.builder import DatasetBuilder
+
+builder = DatasetBuilder(
+    existing_maps_dir=Path("D:/Git/valoscribe/data/processed"),
+    new_maps_dir=Path("data/processing/processed"),
+    manifest=ProcessingManifest(Path("data/processing/manifest.json"))
 )
+
+df = builder.build_combined_dataset(
+    feature_set="full",
+    quality_threshold=0.8
+)
+
+# Rest of experiment unchanged
 ```
 
-**Reliability Strategy:**
-- Run extraction on first 10 frames and use majority vote
-- Allow manual override if OCR fails
-- Cache extracted metadata for match session
+**Why minor change:** DatasetBuilder encapsulates multi-source loading, experiment runner just calls it instead of manual loading
 
----
+## Directory Structure
 
-### 7. GameWatcher Integration (Modify Existing)
+### Before (v2)
+```
+D:\Git\
+├── Val-Prediciton-Model\
+│   ├── src/
+│   │   ├── data/         # Loader for Valoscribe output
+│   │   ├── features/     # Feature extraction
+│   │   ├── modeling/     # Models and experiments
+│   ├── scripts/
+│   │   └── run_real_experiment.py
+│   └── experiments/      # Experiment results
+│
+└── valoscribe\
+    ├── data/
+    │   └── processed/    # 71 maps (existing)
+    │       ├── {map_id_1}/
+    │       │   ├── events.jsonl
+    │       │   ├── frames.csv
+    │       │   └── metadata.json
+    │       └── {map_id_2}/
+    │           └── ...
+    └── src/
+        └── scraper/
+            └── vlr_scraper.py  # Match page scraping
+```
 
-**Current Code:**
+### After (v3)
+```
+D:\Git\
+├── Val-Prediciton-Model\
+│   ├── src/
+│   │   ├── data/
+│   │   │   ├── loader.py       # Existing (unchanged)
+│   │   │   ├── builder.py      # NEW - multi-source dataset builder
+│   │   │   └── ...
+│   │   ├── features/           # Existing (unchanged)
+│   │   ├── modeling/           # Existing (unchanged)
+│   │   ├── scraping/           # NEW
+│   │   │   ├── __init__.py
+│   │   │   ├── vlr_events.py   # VLR.gg event page scraper
+│   │   │   ├── manifest.py     # State tracking
+│   │   │   ├── orchestrator.py # Batch processor
+│   │   │   └── config.py       # Configuration
+│   │   └── ...
+│   ├── scripts/
+│   │   ├── run_real_experiment.py  # Updated to use DatasetBuilder
+│   │   ├── expand_dataset.py       # NEW - CLI for scraping + processing
+│   │   └── summarize_progress.py   # NEW - Read manifest and print stats
+│   ├── data/
+│   │   └── processing/         # NEW - separate from existing maps
+│   │       ├── manifest.json   # VOD processing state
+│   │       ├── downloads/      # Temporary VOD files (deleted after)
+│   │       ├── metadata/       # VLR.gg match metadata cache
+│   │       └── processed/      # Valoscribe output (new maps)
+│   │           ├── {vod_id_1}/ # Format: "{match_id}_map{N}"
+│   │           │   ├── events.jsonl
+│   │           │   ├── frames.csv
+│   │           │   └── metadata.json
+│   │           └── {vod_id_2}/
+│   │               └── ...
+│   └── experiments/
+│
+└── valoscribe\
+    ├── data/
+    │   └── processed/    # 71 maps (existing, preserved)
+    │       └── ...
+    └── src/
+        └── scraper/
+            └── vlr_scraper.py  # Used by Val-Prediction-Model scraping
+```
+
+## Data Flow Diagrams
+
+### Discovery Flow (New)
+```
+User specifies VLR.gg event URL
+        ↓
+VLREventScraper.discover_match_urls()
+        ↓
+For each match URL:
+    ↓
+    Valoscribe scrape_match()  [external call]
+        ↓
+    Extract: teams, maps, VOD URLs, tournament
+        ↓
+    Create VODRecord for each map with VOD
+        ↓
+    Add to ProcessingManifest
+        ↓
+    Manifest.save() [atomic JSON write]
+```
+
+### Processing Flow (New)
+```
+VODOrchestrator.run_pipeline()
+        ↓
+For each pending VOD in manifest:
+    ↓
+    1. Update status: "downloading"
+    ↓
+    2. Valoscribe download (YouTube URL → .mp4)
+    ↓
+    3. Update status: "processing"
+    ↓
+    4. Valoscribe orchestrate process-vod (.mp4 + metadata → events.jsonl)
+    ↓
+    5. Update status: "complete", set map_id
+    ↓
+    6. Delete .mp4 file (save disk)
+    ↓
+    7. Manifest.save() [atomic]
+        ↓
+        Continue to next VOD
+```
+
+### Training Flow (Modified)
+```
+Experiment runner
+        ↓
+DatasetBuilder.build_combined_dataset()  [NEW component]
+        ↓
+    Discover maps from:
+        - D:\Git\valoscribe\data\processed (existing 71)
+        - data/processing/processed (new scraped)
+        ↓
+    Load all maps via existing loader
+        ↓
+    Filter by quality score (existing quality module)
+        ↓
+    Extract features via existing FeaturePipeline
+        ↓
+    Return unified DataFrame
+        ↓
+Existing experiment pipeline (unchanged)
+    ↓
+Train model, evaluate, calibrate, explain
+```
+
+## Build Order Recommendation
+
+Based on dependencies and risk, suggested phase structure:
+
+### Phase 1: Scraping Infrastructure
+**Why first:** No dependencies, can validate VLR.gg scraping independently
+
+**Components:**
+- `src/scraping/manifest.py` - State tracking (standalone, testable)
+- `src/scraping/config.py` - Configuration (simple, no dependencies)
+- `src/scraping/vlr_events.py` - VLR.gg scraper (depends on Valoscribe scrape_match)
+
+**Validation:** Scrape 1-2 VLR.gg events, verify manifest persists correctly
+
+**Risk:** LOW - self-contained, no impact on existing code
+
+### Phase 2: Valoscribe CLI Integration
+**Why second:** Required by orchestrator, may need Valoscribe changes
+
+**Components:**
+- Verify/add Valoscribe CLI commands: `scrape-vlr`, `split-metadata`, `download`, `process-vod`
+- Test download + process pipeline on 1 VOD
+
+**Validation:** Manually call Valoscribe commands, verify output format matches expectations
+
+**Risk:** MEDIUM - depends on Valoscribe changes (active development, but external)
+
+### Phase 3: Orchestration Pipeline
+**Why third:** Depends on scraping + Valoscribe CLI
+
+**Components:**
+- `src/scraping/orchestrator.py` - Batch processor
+- `scripts/expand_dataset.py` - CLI entry point
+- `scripts/summarize_progress.py` - Progress monitoring
+
+**Validation:** Process 3-5 VODs end-to-end, verify resumability (kill + restart)
+
+**Risk:** MEDIUM - integration complexity, but well-isolated from existing code
+
+### Phase 4: Dataset Merging
+**Why fourth:** Can defer until training, doesn't block scraping
+
+**Components:**
+- `src/data/builder.py` - Multi-source dataset builder
+- Update experiment scripts to use DatasetBuilder
+
+**Validation:** Load existing 71 maps + 3-5 new maps, verify feature extraction works
+
+**Risk:** LOW - thin wrapper over existing loader
+
+### Phase 5: Scaled Processing
+**Why last:** Validate pipeline at small scale first
+
+**Components:**
+- Process 50+ VODs through pipeline
+- Monitor for failures, disk space, rate limits
+
+**Validation:** Process 150+ maps, run experiments on combined dataset (71 existing + 150 new)
+
+**Risk:** LOW - operational scale, no code changes
+
+## Suggested Component Boundaries
+
+### Clean Interfaces
+
+**VLREventScraper → Manifest:**
 ```python
-# backend.py (existing)
-def run(self):
-    while True:
-        ret, frame = self.cap.read()
-
-        if frame_count % 10 != 0:
-            continue
-
-        state = self.process_frame(frame)
-
-        # PROBLEM: Overwrites JSON every frame
-        with open(self.output_file, 'w') as f:
-            json.dump(state, f)
+# Discovery returns list of VODRecords
+vod_records = scraper.discover_vods(event_url, manifest, tournament_name)
+# Scraper is read-only, manifest handles persistence
 ```
 
-**Refactored Integration:**
+**Manifest → VODOrchestrator:**
 ```python
-# backend.py (modified)
-class GameWatcher:
-    def __init__(self, stream_url, match_id=None):
-        self.stream_url = stream_url
-        self.cap = None
-        self.pipeline = None  # Initialized after metadata extraction
-        self.match_id = match_id or f"match_{int(time.time())}"
-
-    def run(self):
-        if not self.connect_stream():
-            return
-
-        # Extract metadata from first valid frame
-        metadata = self._extract_metadata()
-
-        # Initialize event pipeline
-        self.pipeline = EventPipeline(self.match_id, metadata)
-
-        frame_count = 0
-        while True:
-            ret, frame = self.cap.read()
-            if not ret:
-                print("Stream ended. Finalizing match...")
-                self.pipeline.end_match()
-                break
-
-            frame_count += 1
-            if frame_count % 10 != 0:
-                continue
-
-            try:
-                # Process frame through event pipeline
-                timestamp = time.time()
-                events = self.pipeline.process_frame(frame, timestamp)
-
-                # Optional: Print events to console
-                for event in events:
-                    print(f"[{event.event_type}] {event.data}")
-
-            except Exception as e:
-                print(f"Error processing frame: {e}")
-
-    def _extract_metadata(self) -> MatchMetadata:
-        """Extract teams/map from first valid frames"""
-        extractor = MetadataExtractor()
-
-        # Try first 10 frames
-        attempts = []
-        for _ in range(10):
-            ret, frame = self.cap.read()
-            if not ret:
-                continue
-
-            try:
-                left, right = extractor.extract_teams(frame)
-                map_name = extractor.extract_map(frame)
-                attempts.append((left, right, map_name))
-            except:
-                continue
-
-        # Use majority vote or first valid result
-        if attempts:
-            left, right, map_name = attempts[0]  # Simplified - use first
-        else:
-            # Fallback to manual input or defaults
-            left, right, map_name = "Team A", "Team B", "Unknown"
-
-        return MatchMetadata(
-            teams=[left, right],
-            map=map_name,
-            start_time=time.time()
-        )
+# Orchestrator queries manifest for work
+pending_vods = manifest.get_pending()
+# Orchestrator updates status after each step
+manifest.update_status(vod_id, "processing", started_at=timestamp)
 ```
 
-**Key Changes:**
-1. Replace `process_frame()` with `pipeline.process_frame()`
-2. Extract metadata before starting event pipeline
-3. Call `pipeline.end_match()` when stream ends
-4. Remove JSON overwrite logic
-
----
-
-## State Management Pattern
-
-### Problem: How to Track "Previous State"?
-
-**Anti-Pattern (Avoid):**
+**VODOrchestrator → Valoscribe:**
 ```python
-# Global variable = hard to test, thread-unsafe
-previous_state = None
-
-def process_frame(frame):
-    global previous_state
-    current = extract_state(frame)
-
-    if previous_state:
-        detect_changes(previous_state, current)
-
-    previous_state = current  # Mutates global
+# Orchestrator calls Valoscribe via subprocess
+subprocess.run(["python", "-m", "valoscribe", "download", url, "--output", dir])
+# Output: Valoscribe writes to disk, orchestrator reads output path
 ```
 
-**Recommended Pattern: Encapsulated State in StateTracker**
+**DatasetBuilder → Existing Pipeline:**
 ```python
-class StateTracker:
-    def __init__(self):
-        self.previous = None
-        self.current = None
-
-    def update(self, new_state):
-        self.previous = self.current  # Shift
-        self.current = new_state      # Update
-        return self.detect_changes()
+# Builder provides unified DataFrame
+df = builder.build_combined_dataset(feature_set="full")
+# Experiment runner receives same interface as before (just bigger DataFrame)
 ```
 
-**Why Better?**
-- **Testable:** Create new `StateTracker()` per test
-- **Thread-safe:** Each pipeline has its own tracker
-- **Explicit:** State ownership is clear
+### Separation of Concerns
 
-### Handling Edge Cases
+| Component | Knows About | Does NOT Know About |
+|-----------|-------------|---------------------|
+| VLREventScraper | VLR.gg HTML, Valoscribe scrape_match | Valoscribe processing, feature extraction |
+| Manifest | VOD metadata, processing status | Valoscribe CLI, feature engineering |
+| VODOrchestrator | Valoscribe CLI, manifest state | Feature extraction, model training |
+| DatasetBuilder | Valoscribe output format, quality filtering | Scraping, downloading |
+| Feature Pipeline | MapData schema | VLR.gg, manifest, scraping |
+| Model Trainer | DataFrame format | Valoscribe, scraping, data sources |
 
-**1. First Frame (No Previous State)**
+### Anti-Pattern: Tight Coupling
+
+**Bad (don't do this):**
 ```python
-if self.current_state is None:
-    self.current_state = new_state
-    return []  # No changes yet
+# VODOrchestrator directly importing FeaturePipeline
+class VODOrchestrator:
+    def process_vod(self, record):
+        # ... download and process ...
+        features = FeaturePipeline().extract_features(...)  # WRONG - too coupled
 ```
 
-**2. Round Resets (Alive Count Jumps from 0 → 5)**
+**Good (separation):**
 ```python
-# Detect new round start
-if self.previous_state.alive_left == 0 and self.current_state.alive_left == 5:
-    return [StateChange(type='ROUND_START')]
+# VODOrchestrator focuses on processing
+class VODOrchestrator:
+    def process_vod(self, record):
+        # ... download and process ...
+        return map_id  # Just return output location
+
+# Feature extraction happens separately in experiment runner
+builder = DatasetBuilder(...)
+df = builder.build_combined_dataset(...)  # Reads processed maps, extracts features
 ```
-
-**3. OCR Errors (Score Temporarily Reads Wrong)**
-```python
-# Smoothing: Require change to persist for 3 frames
-class StateTracker:
-    def __init__(self):
-        self.state_buffer = deque(maxlen=3)
-
-    def update(self, new_state):
-        self.state_buffer.append(new_state)
-
-        # Only emit change if all 3 frames agree
-        if len(self.state_buffer) == 3:
-            if all(s.score_left == self.state_buffer[-1].score_left for s in self.state_buffer):
-                # Stable state
-                return self.detect_changes()
-```
-
-**Trade-off:** Smoothing reduces false positives but adds 0.5s latency (at 6fps).
-
-**Recommendation for MVP:** No smoothing initially. Add if OCR errors cause event spam.
-
----
-
-## Extensible Event Types
-
-### Design Goal: Add New Event Types Without Breaking Existing Code
-
-**Strategy: Type Registry + Factory Pattern**
-
-```python
-# event_types.py
-from typing import Dict, Type
-from dataclasses import dataclass
-
-@dataclass
-class BaseEvent:
-    """All events inherit from this"""
-    match_id: str
-    timestamp: float
-    event_type: str
-
-    def to_dict(self) -> Dict:
-        raise NotImplementedError
-
-# Built-in event types
-@dataclass
-class RoundEndEvent(BaseEvent):
-    winner: str
-    new_score: Tuple[int, int]
-
-    def to_dict(self):
-        return {
-            'winner': self.winner,
-            'new_score': self.new_score
-        }
-
-@dataclass
-class KillEvent(BaseEvent):
-    team: str
-    count: int
-    remaining_alive: int
-
-    def to_dict(self):
-        return {
-            'team': self.team,
-            'count': self.count,
-            'remaining_alive': self.remaining_alive
-        }
-
-@dataclass
-class SpikePlantedEvent(BaseEvent):
-    def to_dict(self):
-        return {}
-
-# Event registry (for future extension)
-EVENT_REGISTRY: Dict[str, Type[BaseEvent]] = {
-    'ROUND_END': RoundEndEvent,
-    'KILLS': KillEvent,
-    'SPIKE_PLANTED': SpikePlantedEvent,
-}
-
-def register_event_type(event_type: str, event_class: Type[BaseEvent]):
-    """Allows plugins to add new event types"""
-    EVENT_REGISTRY[event_type] = event_class
-```
-
-**Adding New Event Type (Future):**
-```python
-# user_extensions.py
-@dataclass
-class UltimateUsedEvent(BaseEvent):
-    team: str
-    agent: str
-
-    def to_dict(self):
-        return {'team': self.team, 'agent': self.agent}
-
-# Register it
-register_event_type('ULTIMATE_USED', UltimateUsedEvent)
-```
-
-**Why This Works:**
-- **Open/Closed Principle:** Open for extension (add types), closed for modification (no changes to core)
-- **Type Safety:** Each event type has its own dataclass with typed fields
-- **Backward Compatible:** Old event logs still parse (just ignore unknown types)
-
----
-
-## Build Order (Suggested Phase Structure)
-
-### Phase 1: State Diffing Foundation
-**Build first:**
-1. `StateTracker` class
-2. `GameState` dataclass
-3. `StateChange` dataclass
-4. Unit tests for diff logic
-
-**Validation:** Can detect score changes, kills, spike events from mock state sequences
-
-**Why first:** Core logic with zero dependencies. Easy to test in isolation.
-
----
-
-### Phase 2: Event Emission + Storage
-**Build next:**
-1. `Event` dataclass + schema
-2. `EventEmitter` class
-3. `EventStore` class (JSONL writer)
-4. Integration tests (state → events → file)
-
-**Validation:** Given state changes, produces valid JSONL event logs
-
-**Why second:** Depends on StateTracker but not on CV pipeline. Can test with mock changes.
-
----
-
-### Phase 3: Pipeline Integration
-**Build next:**
-1. `EventPipeline` orchestrator
-2. Refactor `GameWatcher` to use pipeline
-3. `MatchMetadata` dataclass
-4. End-to-end test (mock frame → event log)
-
-**Validation:** Full pipeline works with `VCTVisionEngine` (existing code unchanged)
-
-**Why third:** Integrates all components but doesn't require new CV features yet.
-
----
-
-### Phase 4: Metadata Extraction
-**Build next:**
-1. `MetadataExtractor` class
-2. ROI definitions for team names, map
-3. OCR preprocessing for text (vs digits)
-4. Majority-vote validation logic
-
-**Validation:** Can extract team names and map from sample VCT frames
-
-**Why fourth:** Extends CV capabilities but doesn't block core event pipeline. Can use placeholder metadata if OCR fails.
-
----
-
-### Phase 5: Match Session Management
-**Build next:**
-1. Multi-map series support (one match_id, multiple map logs)
-2. Start/stop UI controls (if needed)
-3. Match metadata finalization (final score, duration)
-
-**Validation:** Can track full BO3/BO5 series with correct metadata
-
-**Why fifth:** Builds on working pipeline. Mainly UX/coordination layer.
-
----
-
-### Phase 6: Advanced Event Types (Future)
-**Add later:**
-1. Economy events (buy tier shifts)
-2. Agent composition tracking
-3. Ultimate ability detection
-4. Player-level tracking (if CV supports it)
-
-**Why last:** Extends event schema without blocking core pipeline. Can add incrementally.
-
----
 
 ## Scalability Considerations
 
-### At 100 Events (Single Match)
-**Approach:** Single JSONL file, load entire file into memory for analysis
+### At 100 Maps (Current + Immediate)
+- **Storage:** ~500MB (events.jsonl + metadata), negligible
+- **Processing time:** ~2 hours per VOD × 30 VODs = 60 hours (2.5 days continuous)
+- **Approach:** Sequential processing, single output directory, existing loader works
 
-**Storage:** ~10KB per match
-**Performance:** Instant
+### At 500 Maps (v3 Target)
+- **Storage:** ~2.5GB events, manageable
+- **Processing time:** ~150 hours (6 days continuous)
+- **Approach:** Still sequential, may batch-process overnight, manifest enables resume
+- **New concern:** Feature extraction time increases (500 maps × 0.1s = 50s, still fast)
 
----
+### At 2000 Maps (Future v4+)
+- **Storage:** ~10GB events, still local-friendly
+- **Processing time:** ~600 hours (25 days continuous)
+- **Approach:** Consider parallel Valoscribe processing (multiple GPUs), multi-machine
+- **New concern:** Feature extraction may need Parquet caching, incremental updates
 
-### At 10K Events (100 Matches)
-**Approach:** One file per match, query by filename (match_id)
+**Current architecture supports up to 500 maps without changes.** Beyond that, consider:
+- Parallel Valoscribe processing (requires GPU coordination)
+- Incremental feature extraction (cache features per map, update on new data)
+- Distributed storage (S3/GCS for processed maps)
 
-**Storage:** ~1MB total
-**Performance:** Fast (filesystem handles this easily)
+## Risk Areas and Mitigation
 
-**Indexing Strategy:** None needed yet. Filename contains match_id and timestamp.
+### Risk 1: Valoscribe CLI Interface Changes
+**What:** Valoscribe is actively developed, CLI may not match assumptions
 
----
+**Mitigation:**
+- Phase 2 validates Valoscribe CLI early
+- Document exact Valoscribe commit hash used
+- Pin Valoscribe version in requirements or use git submodule
+- If commands don't exist, add them to Valoscribe (we control both repos)
 
-### At 1M Events (10K Matches)
-**Approach:** Hierarchical directory structure + optional SQLite index
+### Risk 2: VLR.gg HTML Structure Changes
+**What:** VLR.gg updates site, scraper breaks
 
-**Directory Structure:**
-```
-match_logs/
-  2026/
-    02/
-      match_001_1675893023.jsonl
-      match_002_1675897654.jsonl
-  2026/
-    03/
-      match_050_1677485923.jsonl
-```
+**Mitigation:**
+- VLREventScraper includes error handling for missing elements
+- Manifest tracks scraping failures separately from processing failures
+- Build test suite with saved HTML snapshots
+- Monitor error rates in manifest (spike = site changed)
 
-**Optional Index:**
-```sql
-CREATE TABLE matches (
-    match_id TEXT PRIMARY KEY,
-    file_path TEXT,
-    start_time REAL,
-    teams TEXT,
-    map TEXT,
-    final_score TEXT
-);
-```
+### Risk 3: Manifest Corruption
+**What:** Python crashes during JSON write, manifest corrupted
 
-**Query Pattern:**
-```python
-# Find match by team
-cursor.execute("SELECT file_path FROM matches WHERE teams LIKE '%G2%'")
-file_path = cursor.fetchone()[0]
+**Mitigation:**
+- Atomic write pattern (temp file + rename)
+- Daily backups of manifest (copy to `manifest.YYYYMMDD.json`)
+- Validate JSON on load, fallback to backup if corrupt
 
-# Load events
-with open(file_path) as f:
-    events = [json.loads(line) for line in f]
-```
+### Risk 4: Disk Space Exhaustion
+**What:** VODs are multi-GB, processing 100+ fills disk
 
-**Storage:** ~100MB total
-**Performance:** Sub-second queries with index
+**Mitigation:**
+- Delete VOD immediately after successful processing
+- `try/finally` ensures cleanup even on errors
+- Check free disk space before download (refuse if <50GB)
+- Log disk usage in manifest summary
 
-**Recommendation:** Defer indexing until needed (Phase 6+). Filesystem search is fast enough for hundreds of matches.
+### Risk 5: YouTube Rate Limiting
+**What:** YouTube detects bot, throttles or blocks
 
----
-
-## Anti-Patterns to Avoid
-
-### Anti-Pattern 1: Continuous State Snapshots (Not Event-Based)
-
-**What goes wrong:**
-```python
-# BAD: Write full state every frame
-while True:
-    state = extract_state(frame)
-    db.insert(state)  # 6 inserts per second
-```
-
-**Why bad:**
-- **Storage explosion:** 21,600 records per hour (at 6fps)
-- **Redundant data:** Most frames have no changes
-- **Analysis complexity:** Have to diff snapshots during analysis
-
-**Prevention:**
-Only write when state **changes**. Use `StateTracker` to detect changes first.
-
----
-
-### Anti-Pattern 2: Over-Engineering Event Schema Too Early
-
-**What goes wrong:**
-```python
-# BAD: Design for every possible future event type upfront
-class Event:
-    event_type: str
-    player_id: Optional[int]
-    agent: Optional[str]
-    weapon: Optional[str]
-    position: Optional[Tuple[float, float]]
-    ultimate_charge: Optional[int]
-    # ... 20 more optional fields
-```
-
-**Why bad:**
-- **Premature complexity:** Don't need player-level data yet
-- **Maintenance burden:** Every event type checks 20 fields
-- **Migration pain:** Schema changes break existing logs
-
-**Prevention:**
-- Start with **team-level events only** (score, alive count, spike)
-- Use `data: Dict[str, Any]` for type-specific fields
-- Add new event types as separate classes when needed
-
----
-
-### Anti-Pattern 3: Tight Coupling Between CV and Event Logic
-
-**What goes wrong:**
-```python
-# BAD: Event detection inside VCTVisionEngine
-class VCTVisionEngine:
-    def analyze(self, frame):
-        state = self.extract_state(frame)
-
-        # Embedded event detection
-        if state['score_left'] > self.previous_score_left:
-            self.emit_event('ROUND_END', winner='left')
-
-        self.previous_score_left = state['score_left']
-        return state
-```
-
-**Why bad:**
-- **Not reusable:** Can't use `VCTVisionEngine` without event system
-- **Hard to test:** Vision extraction and diffing are coupled
-- **Violates SRP:** One class doing two jobs
-
-**Prevention:**
-Separate **extraction** (`VCTVisionEngine`) from **diffing** (`StateTracker`). Vision engine stays stateless.
-
----
-
-### Anti-Pattern 4: Synchronous Writes Blocking Frame Processing
-
-**What goes wrong:**
-```python
-# BAD: Write to disk in main loop
-while True:
-    frame = capture_frame()
-    events = process_frame(frame)
-
-    for event in events:
-        db.execute("INSERT INTO events ...")  # Blocks here
-```
-
-**Why bad:**
-- **Frame drops:** If write takes >166ms (at 6fps), frames get skipped
-- **Latency spikes:** Disk I/O is unpredictable
-
-**Prevention:**
-- **Buffered writes:** Accumulate events, flush every 10 frames
-- **Async I/O:** Use background thread/queue for writes
-- **JSONL append:** Faster than SQL inserts
-
-**MVP Approach:** Buffered writes are sufficient. Async can wait.
-
----
+**Mitigation:**
+- 10-second delay between downloads (configured in ProcessingConfig)
+- Use Valoscribe's yt-dlp wrapper (handles anti-bot measures)
+- Process overnight to spread requests over time
+- Monitor for HTTP 429 errors, increase delay if detected
 
 ## Testing Strategy
 
-### Unit Tests (Isolated Components)
+### Unit Tests
+- `manifest.py`: Atomic saves, status updates, query methods
+- `vlr_events.py`: Match URL parsing (with saved HTML fixtures)
+- `config.py`: Environment variable loading
 
-**StateTracker:**
-```python
-def test_detect_score_change():
-    tracker = StateTracker()
+### Integration Tests
+- `orchestrator.py`: Mock Valoscribe subprocess calls, verify state transitions
+- `builder.py`: Load from multiple directories, merge datasets
 
-    # First frame
-    state1 = GameState(score_left=0, score_right=0, alive_left=5, alive_right=5, spike_planted=False)
-    changes = tracker.update(state1.to_dict())
-    assert changes == []
+### End-to-End Tests
+- Process 1 VOD through full pipeline (scrape → download → process → load)
+- Verify output matches Valoscribe format
+- Kill orchestrator mid-processing, verify resume works
 
-    # Score increases
-    state2 = GameState(score_left=1, score_right=0, alive_left=5, alive_right=5, spike_planted=False)
-    changes = tracker.update(state2.to_dict())
-    assert len(changes) == 1
-    assert changes[0].type == 'ROUND_END'
-    assert changes[0].winner == 'left'
-```
-
-**EventEmitter:**
-```python
-def test_emit_round_end_event():
-    emitter = EventEmitter(match_id="test_match")
-
-    change = StateChange(type='ROUND_END', winner='left', new_score=(1, 0))
-    events = emitter.emit_events([change], timestamp=1234567890.0)
-
-    assert len(events) == 1
-    assert events[0].event_type == 'ROUND_END'
-    assert events[0].data['winner'] == 'left'
-```
-
-**EventStore:**
-```python
-def test_event_store_jsonl_format(tmp_path):
-    store = EventStore(storage_dir=tmp_path)
-
-    metadata = MatchMetadata(teams=["G2", "NRG"], map="Bind", start_time=1234567890.0)
-    store.start_match("test_match", metadata)
-
-    event = Event(match_id="test_match", timestamp=1234567891.0, event_type="ROUND_END", data={"winner": "left"})
-    store.append([event])
-
-    # Read file
-    log_file = list(tmp_path.glob("*.jsonl"))[0]
-    with open(log_file) as f:
-        lines = f.readlines()
-
-    assert len(lines) == 2  # Metadata + event
-    assert json.loads(lines[0])['type'] == 'MATCH_START'
-    assert json.loads(lines[1])['event_type'] == 'ROUND_END'
-```
-
----
-
-### Integration Tests (Multiple Components)
-
-**Full Pipeline:**
-```python
-def test_full_pipeline_with_mock_frames():
-    # Mock frame sequence
-    frame1 = create_mock_frame(score_left=0, score_right=0, alive_left=5, alive_right=5)
-    frame2 = create_mock_frame(score_left=0, score_right=0, alive_left=3, alive_right=5)  # 2 kills
-    frame3 = create_mock_frame(score_left=1, score_right=0, alive_left=5, alive_right=5)  # Round end
-
-    metadata = MatchMetadata(teams=["Team A", "Team B"], map="Test Map", start_time=1234567890.0)
-    pipeline = EventPipeline(match_id="test", metadata=metadata)
-
-    # Process frames
-    events1 = pipeline.process_frame(frame1, timestamp=1234567890.0)
-    events2 = pipeline.process_frame(frame2, timestamp=1234567891.0)
-    events3 = pipeline.process_frame(frame3, timestamp=1234567892.0)
-
-    assert len(events1) == 0  # First frame, no changes
-    assert len(events2) == 1  # Kill event
-    assert events2[0].event_type == 'KILLS'
-    assert len(events3) == 1  # Round end
-    assert events3[0].event_type == 'ROUND_END'
-
-    pipeline.end_match()
-
-    # Verify event log
-    log_files = list(Path("match_logs").glob("test_*.jsonl"))
-    assert len(log_files) == 1
-```
-
----
-
-### End-to-End Tests (With Real Frames)
-
-**VOD Analysis:**
-```python
-def test_analyze_vod_clip():
-    """
-    Test with a 10-second VCT VOD clip containing known events:
-    - Round start (0s)
-    - Spike plant (5s)
-    - Round end (8s)
-    """
-    cap = cv2.VideoCapture("test_data/round_clip.mp4")
-
-    metadata = MatchMetadata(teams=["G2", "NRG"], map="Bind", start_time=0)
-    pipeline = EventPipeline(match_id="vod_test", metadata=metadata)
-
-    frame_count = 0
-    all_events = []
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        if frame_count % 10 == 0:  # 6fps
-            timestamp = frame_count / 60.0
-            events = pipeline.process_frame(frame, timestamp)
-            all_events.extend(events)
-
-        frame_count += 1
-
-    pipeline.end_match()
-
-    # Assert expected events
-    event_types = [e.event_type for e in all_events]
-    assert 'SPIKE_PLANTED' in event_types
-    assert 'ROUND_END' in event_types
-```
-
----
-
-## Data Models
-
-### Core Data Structures
-
-```python
-from dataclasses import dataclass
-from typing import Optional, Tuple, Dict, Any
-import time
-
-@dataclass
-class GameState:
-    """Represents game state at a single frame"""
-    score_left: int
-    score_right: int
-    alive_left: int
-    alive_right: int
-    spike_planted: bool
-    eco_left: int = 0
-    eco_right: int = 0
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'GameState':
-        return cls(
-            score_left=data.get('score_left', 0),
-            score_right=data.get('score_right', 0),
-            alive_left=data.get('alive_left', 0),
-            alive_right=data.get('alive_right', 0),
-            spike_planted=data.get('spike_planted', False),
-            eco_left=data.get('eco_left', 0),
-            eco_right=data.get('eco_right', 0)
-        )
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            'score_left': self.score_left,
-            'score_right': self.score_right,
-            'alive_left': self.alive_left,
-            'alive_right': self.alive_right,
-            'spike_planted': self.spike_planted,
-            'eco_left': self.eco_left,
-            'eco_right': self.eco_right
-        }
-
-@dataclass
-class StateChange:
-    """Represents a detected change between frames"""
-    type: str  # 'ROUND_END', 'KILLS', 'SPIKE_PLANTED', etc.
-    data: Dict[str, Any]
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {'type': self.type, **self.data}
-
-@dataclass
-class MatchMetadata:
-    """Match session metadata"""
-    teams: Tuple[str, str]
-    map: str
-    start_time: float
-    match_id: Optional[str] = None
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            'teams': list(self.teams),
-            'map': self.map,
-            'start_time': self.start_time,
-            'match_id': self.match_id
-        }
-
-@dataclass
-class Event:
-    """Timestamped event with match context"""
-    match_id: str
-    timestamp: float
-    event_type: str
-    data: Dict[str, Any]
-
-    def to_json(self) -> str:
-        import json
-        return json.dumps({
-            'match_id': self.match_id,
-            'timestamp': self.timestamp,
-            'event_type': self.event_type,
-            'data': self.data
-        })
-
-    @classmethod
-    def from_json(cls, json_str: str) -> 'Event':
-        import json
-        data = json.loads(json_str)
-        return cls(
-            match_id=data['match_id'],
-            timestamp=data['timestamp'],
-            event_type=data['event_type'],
-            data=data['data']
-        )
-```
-
----
-
-## Configuration Management
-
-### Problem: Where Do ROIs and Thresholds Live?
-
-**Current State:**
-- `config.py` has ROIs for timer, spike, avatars
-- `VCTVisionEngine` has duplicate ROI definitions
-- No versioning or validation
-
-**Recommended Structure:**
-```python
-# config/vct_layout_v1.py
-"""
-VCT Broadcast Layout Configuration
-Version: 1.0 (2026 Season)
-Resolution: 1920x1080
-"""
-
-LAYOUT_VERSION = "1.0"
-RESOLUTION = (1920, 1080)
-
-# ROIs: (y_start, y_end, x_start, x_end)
-ROIS = {
-    'score_left': (20, 90, 830, 890),
-    'score_right': (20, 90, 1030, 1090),
-    'timer': (20, 100, 930, 990),
-    'spike': (80, 120, 940, 980),
-    'team_name_left': (50, 100, 200, 400),
-    'team_name_right': (50, 100, 1520, 1720),
-    'map_name': (1000, 1050, 800, 1120),
-}
-
-# Sampling points for alive detection
-ALIVE_DETECTION = {
-    'left_sidebar_x': 260,
-    'right_sidebar_x': 1660,
-    'start_y': 540,
-    'gap_y': 95,
-    'saturation_threshold': 40,
-    'value_threshold': 50,
-}
-
-# Color thresholds (HSV)
-SPIKE_RED_LOWER = (0, 100, 100)
-SPIKE_RED_UPPER = (10, 255, 255)
-
-# OCR settings
-TESSERACT_CMD = None  # Set to path if not in PATH
-```
-
-**Usage:**
-```python
-from config.vct_layout_v1 import ROIS, ALIVE_DETECTION
-
-class VCTVisionEngine:
-    def __init__(self, config_module=None):
-        if config_module is None:
-            from config import vct_layout_v1 as config_module
-
-        self.rois = config_module.ROIS
-        self.alive_config = config_module.ALIVE_DETECTION
-```
-
-**Why Better?**
-- **Single source of truth:** One config file
-- **Versioned:** Can add `vct_layout_v2.py` for new broadcast format
-- **Testable:** Can inject test config in unit tests
-
----
-
-## Summary: Build Order with Rationale
-
-| Phase | What to Build | Why This Order |
-|-------|---------------|----------------|
-| **1. State Diffing** | `StateTracker`, `GameState`, tests | Zero dependencies, easy to test, core logic |
-| **2. Event Emission** | `Event`, `EventEmitter`, `EventStore`, tests | Depends on StateTracker but not CV, can use mocks |
-| **3. Pipeline Integration** | `EventPipeline`, refactor `GameWatcher` | Integrates all components, works with existing VCTVisionEngine |
-| **4. Metadata Extraction** | `MetadataExtractor`, team/map OCR | Extends CV capabilities, not blocking for pipeline |
-| **5. Match Session Mgmt** | Multi-map series, start/stop controls | Builds on working pipeline, mainly coordination |
-| **6. Advanced Events** | Economy, agents, ultimates | Extends event schema, can add incrementally |
-
-**Critical Path:** Phases 1-3 must be sequential. Phases 4-6 can be reordered or parallelized.
-
-**MVP Definition:** Phases 1-3 complete = working event logger with persistent storage.
-
----
+### Operational Validation
+- Process 3-5 VODs, check manifest status
+- Run experiment on combined dataset (existing + new)
+- Verify log loss doesn't degrade (sanity check on data quality)
 
 ## Sources
 
-This architecture is based on established patterns from:
+**HIGH confidence (architecture patterns validated):**
+- Existing v2 codebase: src/data/loader.py, src/features/pipeline.py, src/modeling/experiment.py
+- Valoscribe integration: D:\Git\valoscribe (active development, we control it)
+- Phase 7 research: .planning/phases/07-dataset-expansion/07-RESEARCH.md (yt-dlp, BeautifulSoup, subprocess patterns)
 
-- **Event Sourcing Pattern** (Martin Fowler) - Append-only event logs, state reconstruction
-- **State Machine Pattern** - State transitions trigger events
-- **Computer Vision Pipelines** - Frame extraction → processing → output separation
-- **Sports Analytics Systems** - Event detection from video feeds (e.g., StatsBomb soccer analytics)
-- **Python Design Patterns** - Factory pattern for event types, dataclasses for immutability
+**MEDIUM confidence (integration points inferred):**
+- Valoscribe CLI commands: Assumed based on typical CLI patterns, must verify in Phase 2
+- VLR.gg scraping: HTML structure must be validated against live pages
 
-**Confidence:** HIGH - These are well-established architectural patterns with proven track records in similar domains (sports analytics, video processing, event-driven systems).
-
-**Gaps:**
-- Optimal OCR settings for team/map extraction need empirical tuning (Phase 4)
-- Smoothing strategy for OCR errors (may need experimentation)
-- Multi-map series coordination details (Phase 5)
-
-These gaps are expected to be resolved during implementation of their respective phases.
+**No LOW confidence items** - all architectural decisions based on existing code or verified patterns.

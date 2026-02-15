@@ -1,413 +1,384 @@
-# Feature Landscape: Valorant Esports Event Data Collection
+# Feature Landscape: VLR.gg Data for Match Prediction
 
-**Domain:** Esports data collection and match prediction (Valorant VCT)
-**Researched:** 2026-02-12
-**Confidence:** MEDIUM (based on training data about Valorant mechanics, esports prediction systems, and CV capabilities; WebSearch unavailable for 2026 verification)
+**Domain:** VCT match prediction with VLR.gg scraped data
+**Researched:** 2026-02-14
+**Confidence:** MEDIUM (WebSearch for ecosystem, official VLR.gg structure via WebFetch)
 
 ## Executive Summary
 
-Valorant prediction systems divide into three feature tiers: **table stakes** (events any system must capture to be minimally viable), **differentiators** (events that separate sophisticated models from basic ones), and **anti-features** (tempting but low-value or impractical for CV-based broadcast extraction).
+VLR.gg provides match results, player statistics, agent compositions, team rankings, and YouTube VOD links for VCT tournaments. For a prediction model trained on 150+ maps with walk-forward temporal validation, VLR.gg data enables three categories of new features beyond current Valoscribe game-mechanics extraction:
 
-**Key insight for prediction markets:** Events that create **irreversible advantages** (round wins, economy damage) matter far more than momentary micro-events (individual kills). A team winning pistol round shifts win probability ~8-12%; a single kill mid-round shifts it ~2-5% depending on context.
+**Table stakes (must scrape):** Match metadata (teams, dates, tournament, map names), final scores, VOD links for Valoscribe processing pipeline. Without these, you can't build a training dataset at scale.
 
-**CV extraction reality check:** Broadcast overlays expose scores, alive counts, economy, and spike status reliably. Agent icons, ultimate orbs, and map names are visible but require template matching. Individual player stats, ability cooldowns, and positioning are NOT visible in standard VCT broadcasts.
+**Differentiators (actual predictive value):** Team strength ratings (Elo/Glicko derived from match history), recent form features (time-weighted performance), head-to-head records, map pool strength differentials. These add predictive signal that game mechanics alone cannot capture.
+
+**Anti-features (looks useful, isn't):** Raw player statistics (ACS, K/D, ADR) as pre-match features, agent pick rates without map context, tournament seeding/bracket position. These either overfit on small datasets (<200 maps) or provide unstable signal due to meta shifts and roster changes.
+
+**Key insight for v3 milestone:** VLR.gg data's primary value is NOT adding more features to the model (current 34 game-mechanics features already comprehensive). Its value is (1) **scaling dataset** from 71 to 150+ maps via VOD discovery, and (2) **team identity features** that enable strength-of-opponent adjustments and recent-form weighting, which were previously impossible with identity-blind game mechanics.
 
 ## Table Stakes Features
 
-Events users expect. Missing = system is incomplete for prediction modeling.
+Data you MUST scrape for basic functionality. Missing = can't build training dataset at scale.
 
-| Feature | Why Expected | CV Difficulty | Prediction Value | Dependencies | Notes |
-|---------|--------------|---------------|------------------|--------------|-------|
-| **Round results** | Foundation of match outcome; every round shifts series score | Easy | CRITICAL | Score extraction (existing) | Detectable via score increment. Need state machine to emit discrete "round_end" events. |
-| **Kills per round** | Core mechanic affecting alive differential and round outcome | Medium | HIGH | Alive count tracking (existing) | Detect via alive_count decrements. Cannot identify WHO killed WHO from broadcast (no killfeed OCR yet). |
-| **Spike plant detection** | Major economy/tactical shift; planted rounds worth more credits | Easy | HIGH | Spike status (existing) | Already extracted. Need event emission when status changes from "not planted" → "planted". |
-| **Spike defuse/detonation** | Determines round winner and economy outcomes | Medium | HIGH | Spike status + round timer | Combine spike status with round end. If spike planted + timer expires = detonation. If spike planted + round ends early = defuse. |
-| **Round timer** | Context for evaluating alive differential and spike status | Easy | Medium | OCR (existing) | Already extracted. Used as event timestamp and tactical context (10s left = high pressure). |
-| **Economy per team** | Predicts buy types (eco/force/full) which shift win probability 15-25% | Medium | CRITICAL | OCR on economy UI (existing) | VCT shows total team economy during buy phase. Need to detect buy phase and log economy snapshots. Currently extracted but not logged persistently. |
-| **Match score** | Series context (Bo3/Bo5); map score affects team psychology and strategy | Easy | HIGH | Score extraction (existing) | Already extracted. Need to differentiate map score vs round score in event logs. |
-| **Team identification** | Match event logs to specific teams for training data labeling | Medium | N/A (metadata) | OCR on team name overlay | VCT shows team names/logos top center. Template matching or OCR required. Critical for labeling training data. |
-| **Map identification** | Different maps have different defender/attacker win rates (45-55% variance) | Medium | HIGH | OCR or template matching on map name | VCT shows map name during buy phase and round start. Affects baseline win probabilities. |
+| Feature | Why Expected | Complexity | Predictive Value | Notes |
+|---------|--------------|------------|------------------|-------|
+| **Match metadata** (teams, date, tournament, stage) | Required to label training data and enable temporal ordering for walk-forward validation | Low | N/A (metadata) | Available on every match page. Scrape team names, match date, tournament name, stage (e.g., "Main Event-Middle Final"). Critical for chronological dataset construction. |
+| **Map names and scores** | Required to map VLR.gg matches to Valoscribe processed maps and validate outcomes | Low | N/A (metadata) | VLR.gg shows individual map results (e.g., "Bind 13-10", "Icebox 11-13"). Match to Valoscribe metadata.json for validation. |
+| **YouTube VOD links** | Primary data source for Valoscribe processing pipeline - without VODs, no event data | Low | N/A (pipeline input) | VLR.gg match pages show VOD availability ("YouTube" or "Unavailable"). Scrape YouTube URLs to feed into automated VOD processing queue. **This is the critical bottleneck for scaling from 71 to 150+ maps.** |
+| **Series format** (Bo1/Bo3/Bo5) | Required for series prediction (BO3 vs BO5 have different momentum dynamics) | Low | N/A (metadata) | Available on match pages. Needed for existing BO3/BO5 series prediction framework. |
+| **Team identification** (consistent naming) | Required to track team history across matches for strength ratings and recent form | Medium | N/A (metadata) | VLR.gg team pages have canonical team IDs/names. Map to Valoscribe team names (which may vary per match). Need normalization layer (e.g., "Sentinels" = "SEN" = "Sentinels Esports"). |
+| **Match date/timestamp** | Required for temporal ordering (walk-forward validation) and recency weighting | Low | N/A (metadata) | VLR.gg shows match completion date/time. Essential for chronological train/test splits. |
 
 ### Implementation Notes
 
-**Round result detection:** Requires state machine tracking previous score. When `score_left` or `score_right` increments, emit `round_end` event with winner, final alive counts, spike status, and round duration.
+**VOD discovery workflow:**
+1. Scrape VLR.gg tournament pages for match listings
+2. Filter for matches with "YouTube" VOD availability
+3. Extract YouTube URLs and match metadata
+4. Generate Valoscribe processing manifest (map match_id → VOD_url + metadata)
+5. Feed manifest to automated VOD processing pipeline
 
-**Kill detection:** Track alive count per team. When count decrements, emit `kill` event. Limitation: Cannot identify attacker/victim from broadcast without killfeed OCR (complex, low priority).
+**Team name normalization:** VLR.gg uses canonical names ("Sentinels"), but Valoscribe OCR may extract variants ("SEN", "SENTINELS"). Build mapping table during scraping. Use VLR.gg team page IDs as canonical identifiers.
 
-**Economy events:** VCT broadcast shows total team economy during buy phase (~45 seconds at round start). Detect buy phase (timer = 0:45 or score unchanged for 45s), OCR economy, classify buy type:
-- Eco: <16,000 total (0-3 rifles)
-- Force: 16,000-22,000 (mixed rifles/SMGs)
-- Full buy: >22,000 (full rifles, utilities, armor)
-
-Emit `buy_phase` event with economy snapshot and buy type classification.
+**Data quality:** Not all VLR.gg matches have VODs. Champions 2025 has high VOD coverage (~90%), but earlier tournaments (2024 Masters) may be lower (~60-70%). Prioritize recent tournaments for data quality.
 
 ## Differentiators
 
-Features that separate sophisticated prediction models from basic ones. Not expected, but provide edge.
+Features that add predictive value beyond game mechanics alone. Not expected, but provide edge.
 
-| Feature | Value Proposition | CV Difficulty | Prediction Value | Dependencies | Notes |
-|---------|-------------------|---------------|------------------|--------------|-------|
-| **Agent compositions** | Certain agent combos (e.g., Viper+Astra) have 5-8% higher win rates on specific maps | Medium | MEDIUM | Template matching on agent icons | VCT shows agent portraits top of screen. ~22 agents, need template library. Affects baseline map win rates. |
-| **Ultimate status** | Team with 3+ ults ready has ~10-15% higher round win rate | Hard | MEDIUM-HIGH | Template matching on ultimate orbs | VCT shows ult orbs under agent portraits. Green = ready. Difficult: Small icons, requires per-agent tracking. High value for mid-round prediction. |
-| **First blood** | Team getting first kill wins round 65-70% of time (significant predictor) | Easy | HIGH | Kill event detection | Derived from kill events. First kill in round = first blood. Requires kill event detection (table stakes). |
-| **Alive differential over time** | Tracking 5v4 → 5v3 progression reveals momentum and round-win confidence | Easy | MEDIUM | Alive count tracking (existing) | Calculate `alive_left - alive_right` per frame. Emit when differential changes. Temporal feature for prediction model. |
-| **Round type** (Pistol/Eco/Gun) | Pistol rounds have 50-50 base rates; eco rounds 20-80 favoring full-buy team | Medium | HIGH | Economy classification | Classify based on economy snapshot. Pistol = rounds 1, 13. Eco/Force/Full = economy-based. Adjusts baseline win probability. |
-| **Side** (Attack/Defense) | Defender win rate varies 45-55% by map; critical for probability calibration | Easy | HIGH | Map detection + round number | VCT broadcasts show attacker/defender icons. Or infer: rounds 1-12 one side, 13-24 other (swap at half). |
-| **Comeback potential** | Trailing team behavior differs (force buys, risky plays); affects prediction volatility | Easy | MEDIUM | Score differential + economy | Derived feature. If `score_diff >= 3` and `trailing_team_economy < 20k`, flag high-variance round. |
-| **Post-plant situations** | After plant, attacking team wins 60-65% even if outnumbered (time pressure on defenders) | Easy | MEDIUM-HIGH | Spike plant + alive differential + timer | Combine existing features. If spike planted + defenders have alive advantage, win rate still favors attackers. |
-| **Momentum streaks** | Team winning 3+ consecutive rounds has psychological edge (~5% win rate boost) | Easy | MEDIUM | Round result history | Track round winners. Emit `momentum_shift` when 3+ round streak starts/ends. |
+| Feature | Value Proposition | Complexity | Predictive Value | Dependencies | Notes |
+|---------|-------------------|------------|------------------|--------------|-------|
+| **Team strength rating** (Elo/Glicko derived) | Pre-match team strength differential predicts map winner with ~60-65% baseline accuracy before game mechanics | Medium | HIGH | Match history with temporal ordering | Reconstruct Elo/Glicko ratings from VLR.gg match results. Time-decay weighted (recent matches weighted higher). Adds "strength of opponent" signal that game mechanics can't capture. With 150+ maps, enough data to avoid overfitting to team names. |
+| **Recent form** (time-weighted win rate) | Teams on win streaks (or slumps) perform better/worse than their baseline strength | Medium | MEDIUM-HIGH | Match history, time-decay weighting | Calculate exponentially-weighted win rate over last 5-10 maps (decay parameter tuned via CV). Captures momentum and roster/meta adaptation. Research shows 3-5% prediction boost in sports models. |
+| **Head-to-head record** | Certain team matchups have stylistic advantages (e.g., Team A 7-2 vs Team B historically) | Low | MEDIUM | Match history | Extract from VLR.gg match results. Filter for same tournament tier (don't mix Champions vs regional qualifiers). With 150+ maps, enough samples for common matchups. |
+| **Map pool strength** | Team A 80% win rate on Bind, Team B 45% win rate on Bind → Map pool mismatch predicts outcome | Medium | HIGH | Map-level results per team | VLR.gg team pages show map statistics. Calculate per-team, per-map win rates. Use differential as feature. Addresses "Team A bans their weak maps" selection bias. |
+| **Agent composition meta context** | Whether team is playing current-meta agents or off-meta (meta agents have 5-8% higher win rates per VLR.gg stats) | Medium | MEDIUM | VLR.gg agent pick rates, match agent comps | VLR.gg event pages show agent pick rates per tournament. Calculate "meta alignment score" = how closely team comp matches top 5 most-picked agents on that map. Research shows agent meta shifts every patch, so needs time-windowed calculation. |
+| **Tournament tier weighting** | Champions matches more predictable than regional qualifiers (higher stakes = less variance) | Low | LOW-MEDIUM | Tournament metadata | Flag tournament tier (Champions > Masters > Regional). Use as feature or for stratified validation. Research shows lower-tier matches have higher upset rates. |
 
 ### Implementation Notes
 
-**Agent compositions:** VCT overlay shows agent portraits (128x128 approx) at top of screen. Extract during agent select or buy phase. Use template matching with stored agent icon library (~22 agents as of training data). Low priority for MVP—agent meta changes seasonally.
+**Elo/Glicko ratings:**
+- Start with baseline rating (1500 Elo, 350 Glicko-2 RD)
+- Process VLR.gg match results chronologically to update ratings
+- Use K-factor tuning (K=32 standard, may need adjustment for best-of-series)
+- Glicko preferred over Elo for esports (accounts for rating uncertainty, better for roster changes)
+- Research shows esports AI achieved 69% prediction accuracy with Elo/Glicko
 
-**Ultimate tracking:** Most complex differentiator. VCT shows ultimate orbs (small circles) under each agent portrait. Green filled = ready, empty = charging. Requires:
-1. Locate 10 agent portraits (5 per team)
-2. Sample pixels below each portrait for ult orb
-3. Classify green (ready) vs gray (not ready)
-4. Aggregate to team-level: "Team A has 3 ults ready"
+**Time-decay weighting:**
+- Dixon-Coles model uses exponential decay: recent matches weighted higher
+- Optimal decay parameter found via hyperparameter tuning (cross-validate on training data)
+- Typical: matches from 1 month ago = 0.8x weight, 3 months ago = 0.5x weight
+- Needed because Valorant meta shifts every patch (~2-3 months)
 
-High value but high complexity. Defer to post-MVP unless ult tracking proves critical for prediction edge.
+**Map pool strength calculation:**
+- Per-team, per-map win rate over last N maps (N=20-30 recommended)
+- Differential feature: team1_bind_winrate - team2_bind_winrate
+- Requires sufficient map samples (with 150+ maps, ~5-10 per team per map on average)
+- Handles agent bans (team's weak maps appear less often, so win rate on played maps is signal)
 
-**First blood:** Derived from kill detection. Emit special `first_blood` event for first kill of each round. Simple once kill events work.
+**Agent meta alignment:**
+- VLR.gg event pages show agent pick rates (e.g., Clove 59.6% pick rate, 54.7% win rate in VCT 2026)
+- Calculate per-map, per-tournament agent pick rates
+- Score = (# meta agents in comp) / 5, where meta = top 10 most-picked agents on that map
+- LOW confidence on predictive value: research shows meta shifts reduce stability, may overfit
 
-**Side detection:** VCT shows attacker/defender icons OR can infer from round number (rounds 1-12 = one side, 13+ = swapped). Essential for map-specific prediction calibration.
+**Why these matter with 150+ maps:**
+Previous decision: "No team identity features - prevents overfitting to team names"
+- Valid for 71-map dataset (insufficient samples per team)
+- At 150+ maps: ~5-10 maps per team on average, enough for Elo/Glicko to stabilize
+- Game mechanics capture "what happened in the match", team strength captures "who is playing"
+- Combination is stronger: "Strong team underperforming in-game metrics" = upset, adjust probability
 
 ## Anti-Features
 
-Features to explicitly NOT build. Common mistakes in this domain.
+Features to explicitly NOT build as primary predictive features. Common mistakes in esports prediction.
 
-| Anti-Feature | Why Avoid | What to Do Instead | CV Feasibility |
-|--------------|-----------|-------------------|----------------|
-| **Player-level stats** (individual K/D/A, ADR, headshot %) | Not visible in broadcast; would require game API access or killfeed OCR. High complexity, low prediction value (team aggregates sufficient). | Focus on team-level aggregates (total kills, alive counts). Defer player-level to post-MVP only if prediction model shows need. | Hard (killfeed OCR unreliable; player names often obscured) |
-| **Ability cooldown tracking** | Not shown in VCT broadcast. Would require frame-perfect tracking of ability usage, impossible from spectator view. | Use ultimate status (visible) as proxy for ability availability. | Impossible from broadcast |
-| **Real-time price integration** | Out of scope for data collection milestone. Adds complexity without improving data quality. | Log event timestamps. Manually align with Polymarket/Kalshi price data in post-processing. Add price API later. | N/A (not CV problem) |
-| **Positioning/map control** | VCT broadcast rarely shows minimap clearly; spectator camera focuses on action. Unreliable extraction. | Infer from alive counts and spike status. "Spike planted + 5v3 alive advantage" implies map control. | Very Hard (minimap too small, inconsistently shown) |
-| **Weapon inventory per player** | Partially visible but requires per-player tracking. Low prediction value—economy is better proxy. | Use team economy total to infer buy quality. Full buy ($22k+) = rifles assumed. | Hard (requires player tracking) |
-| **Specific ability usage** (e.g., "Sova dart detected site A") | Not visible in broadcast overlay. Would need game log access. Prediction value unclear. | Track ultimate availability only (visible). Defer ability-level granularity. | Impossible from broadcast |
-| **VOD scrubbing for historical data** | Tempting to batch-process old VODs, but VCT overlay formats change between seasons. ROI coordinates break. | Focus on live/recent matches with current overlay. Accept smaller dataset with consistent format over large dataset requiring constant recalibration. | Hard (format drift over time) |
-| **Cross-platform price arbitrage signals** | Out of scope. This is trading logic, not data collection. Premature. | Build clean event logs first. Prediction model second. Trading signals third (future milestone). | N/A |
+| Anti-Feature | Why Avoid | What to Do Instead | Overfitting Risk |
+|--------------|-----------|-------------------|------------------|
+| **Player-level statistics as pre-match features** (ACS, K/D, ADR, KAST%, HS%) | Previous decision: "Player-level prediction features overfit on small dataset." With 150 maps, still only ~30 maps per player. Insufficient samples. Player stats are OUTCOME of match dynamics, not predictors. | Use player stats for POST-MATCH analysis (SHAP explainability, "which players overperformed?"). NOT as input features. Team-level aggregates (from game mechanics) already capture performance. | HIGH - Will memorize "Player X high K/D" without generalizing. Stats vary match-to-match (high variance). |
+| **Agent pick rates without map context** | Agent meta shifts every patch (every 2-3 months). Clove 54.7% win rate now, may be 48% in 2 patches. Unstable signal. Without map-specific rates, biased by map pool (Viper strong on Icebox, weak on Bind). | If using agent features, MUST be map-specific and time-windowed (last 30 days only). Use as meta-alignment score (is team playing current meta?), not raw pick rates. Defer to post-150-map validation. | MEDIUM - Meta shifts cause model staleness. Training data from 3 months ago misleading. |
+| **Tournament seeding/bracket position** | Correlation, not causation. "Team from upper bracket wins 60%" = stronger teams reach upper bracket (already captured by Elo/Glicko). Adding bracket position = double-counting team strength. | Use tournament tier as stratification (Champions vs Regional), NOT as feature. Elo/Glicko already captures strength. | MEDIUM - Redundant with strength ratings. Adds complexity without signal. |
+| **First Kill / First Death player identity** | VLR.gg shows FK/FD stats per player. Tempting to use "Player X has 0.3 FKPR" as feature. But FKPR is role-dependent (duelists expected to entry frag) and match-dependent (strong opponents = lower FKPR). Small sample size per player. | Use first blood EVENTS from Valoscribe (game mechanics). NOT player-specific FK rates. Valoscribe detects "Team A got first blood Round 3" = high-value event feature. Player identity adds noise. | HIGH - Role confounding, small samples, high variance. |
+| **Pistol round win rate as pre-match feature** | Pistol round outcomes matter IN-GAME (existing feature: "pistol_rounds_won_team1" from Valoscribe). But pre-match "Team A wins 65% of pistol rounds historically" is LOW signal. Pistol rounds are 50-50 baseline (equal economy). Variance is high. | Use pistol round OUTCOMES from Valoscribe (already extracted). NOT historical pistol stats. Historical pistol win rate mostly noise. | LOW-MEDIUM - High variance, low samples per team (~2 pistol rounds per map). |
+| **Individual agent proficiency per player** | VLR.gg shows per-player, per-agent stats. Tempting: "Player X has 1.4 K/D on Jett." Problem: Agent pool changes (roster shifts), meta shifts (Jett nerfed = K/D drops), small samples (Player X played Jett 8 times). Overfits. | Defer to post-200-map dataset. If building, must be time-windowed (last 20 maps only) and regularized heavily. Likely not worth complexity vs prediction gain. | HIGH - Small samples, meta shifts, roster changes. |
+| **Arbitrary streak features** ("Team won last 3 matches") | Recent form already captured by time-weighted Elo/Glicko and time-weighted win rate. Adding "won last 3" = redundant. Also: 3 is arbitrary (why not 5? why not 2?). Overfits to noise. | Use exponentially-weighted win rate (time-decay parameter tuned via CV). NOT arbitrary streak counts. More principled and less prone to overfitting. | MEDIUM - Arbitrary thresholds, redundant with Elo/recent form. |
 
 ### Why These Are Tempting
 
-**Player-level stats:** Feels like "more data = better model." Reality: Team aggregates (alive counts, economy) capture 90% of predictive signal. Individual K/D ratios matter in player evaluation, not round outcome prediction.
+**Player statistics:** VLR.gg prominently displays ACS, K/D, ADR, KAST%, HS%. "More data = better model" intuition. Reality: Player stats are LAGGING indicators (outcome of team performance), not LEADING indicators (predictors of future performance). Team strength (Elo/Glicko) captures skill, game mechanics (from Valoscribe) capture in-match execution. Player stats add noise.
 
-**Positioning:** Intuitively important (map control = win). But broadcast doesn't expose minimap reliably. Attempting to extract it wastes CV effort on noisy data. Better to infer: "5v3 alive advantage + spike planted + 30s left" implies attackers have site control.
+**Agent pick rates:** VLR.gg shows agent pick rate percentages and win rates. Easy to scrape. But agent balance patches every 2-3 months invalidate training data. Clove 54.7% win rate today, 48% win rate after nerf. Model trained on old data performs poorly. If using, MUST be time-windowed and map-specific. Defer until proven necessary.
 
-**VOD scrubbing:** Tempting to build "5 years of VCT data." But:
-1. Overlay formats change seasonally (ROI coordinates break)
-2. Historical matches don't reflect current agent meta or team rosters
-3. Fresh data from current season > stale data from 2021
+**Bracket position:** "Upper bracket teams win 60% of finals" = true. But NOT because upper bracket position causes wins. Because stronger teams reach upper bracket. Elo/Glicko already captures strength. Adding bracket position = overfitting to correlated feature without adding signal.
 
-Focus on live data collection for current season. Accept smaller, higher-quality dataset.
+**Player-agent proficiency:** Intuitively valuable ("Player X is a Jett main, they'll perform well"). But small sample sizes (player played Jett 8 times in dataset) + meta shifts (Jett nerfed) + roster changes (player switches teams/roles) = unstable signal. Overfits.
+
+### Overfitting Risk with 150-Map Dataset
+
+**"Large p, Small n" problem:** 150 maps = 150 samples. With 34 existing game-mechanics features + potential 20+ VLR.gg features (team stats, player stats, agent stats), ratio of features to samples is HIGH. Risk of overfitting increases.
+
+**Mitigation strategies:**
+1. **Feature selection:** Regularization (L1/L2) to penalize low-signal features. SHAP analysis to identify which VLR.gg features actually contribute.
+2. **Cross-validation:** Walk-forward temporal CV (existing). Leave-one-tournament-out CV for diagnostics. Validates generalization.
+3. **Dimensionality reduction:** If adding many VLR.gg features, consider PCA or feature clustering to reduce dimensionality.
+4. **Conservative feature addition:** Start with Elo/Glicko + recent form only. Validate prediction improvement. Add map pool strength if needed. Defer player stats until 200+ maps.
+
+**Research finding:** "Smaller datasets more susceptible to overfitting. If too many features for too little data, model sees patterns that don't exist and is biased by outliers."
+
+With 150 maps and 50+ features, cross-validation and regularization are CRITICAL.
 
 ## Feature Dependencies
 
-Dependencies between features (some features require others to be implemented first).
+Dependencies between VLR.gg features and existing Valoscribe features.
 
 ```
-Foundational (no dependencies):
-├─ Score extraction (OCR) [EXISTING]
-├─ Alive count tracking (color detection) [EXISTING]
-├─ Spike status (color detection) [EXISTING]
-├─ Round timer (OCR) [EXISTING]
-└─ Economy extraction (OCR) [EXISTING]
+VLR.gg Table Stakes (no dependencies, scrape first):
+├─ Match metadata (teams, date, tournament, stage)
+├─ Map names and scores
+├─ YouTube VOD links
+├─ Series format (Bo1/Bo3/Bo5)
+└─ Team identification (canonical names)
 
-Tier 1 (depends on foundational):
-├─ Round result detection → requires score tracking (state machine)
-├─ Kill events → requires alive count deltas (state machine)
-├─ Spike plant/defuse events → requires spike status deltas (state machine)
-├─ Team identification → requires OCR on team name overlay (new CV)
-└─ Map identification → requires OCR or template matching (new CV)
+VLR.gg Differentiators (depend on table stakes):
+├─ Team strength rating (Elo/Glicko) → requires match metadata + results + temporal ordering
+├─ Recent form → requires match results + time-decay weighting
+├─ Head-to-head record → requires match metadata + team identification
+├─ Map pool strength → requires map-level results per team
+├─ Agent meta context → requires VLR.gg agent pick rates + Valoscribe agent comps
+└─ Tournament tier weighting → requires tournament metadata
 
-Tier 2 (depends on Tier 1):
-├─ First blood → requires kill events
-├─ Round type classification → requires economy + round number
-├─ Side detection → requires map + round number OR icon detection
-├─ Buy phase events → requires economy + round timer
-├─ Alive differential → requires alive count tracking (already exists)
-└─ Momentum tracking → requires round result history
+Integration with Valoscribe Features:
+├─ Team strength (VLR.gg Elo) → combines with game mechanics (Valoscribe) in model
+├─ Map pool strength (VLR.gg) → validates map outcome from Valoscribe
+├─ Agent meta alignment (VLR.gg rates + Valoscribe comps) → combined feature
+└─ Recent form (VLR.gg) → adjusts predicted probability from game mechanics
 
-Tier 3 (differentiators, optional):
-├─ Agent compositions → requires template matching (new CV, independent)
-├─ Ultimate tracking → requires agent tracking + template matching (complex)
-├─ Post-plant analysis → requires spike plant events + alive differential
-└─ Comeback flags → requires score differential + economy
+Valoscribe Features (existing, 34 features):
+├─ Score features (7): final scores, differentials, overtime, map winner
+├─ Pistol features (3): pistol round outcomes
+├─ Half features (4): first/second half scores
+├─ Momentum features (5): win/loss streaks, comebacks
+├─ Combat features (6): first bloods, clutches, multi-kills
+├─ Side performance (4): attack/defense win rates
+└─ Economy features (5): eco round win rates, economy differentials
 ```
 
-**Critical path for MVP:**
-1. Implement state machine for event detection (score/alive/spike deltas)
-2. Persistent event logging (replace overwritten game_state.json)
-3. Team/map auto-detection (metadata for training data labeling)
-4. Economy event logging during buy phase
+**Critical path for v3:**
+1. **Scrape VLR.gg metadata** (teams, dates, maps, VOD links) → Build match manifest
+2. **Process VODs via Valoscribe** (scale from 71 to 150+ maps) → Extract game mechanics
+3. **Derive team strength ratings** (Elo/Glicko from VLR.gg match history) → Pre-match feature
+4. **Integrate strength + mechanics** (combined model: Elo differential + 34 game mechanics) → Run experiments
+5. **Validate improvement** (does adding Elo improve log loss vs mechanics-only baseline?)
 
-**Defer to post-MVP:**
-- Agent compositions (meta shifts, requires template library)
-- Ultimate tracking (high complexity, marginal prediction gain over economy)
-- Player-level tracking (not visible in broadcast)
+**Defer to post-150-map validation:**
+- Agent meta alignment (unclear predictive value, meta shifts)
+- Map pool strength (useful if baseline model struggles with map selection bias)
+- Player statistics (anti-feature, HIGH overfitting risk)
 
-## Feature Priority Matrix
+## Feature Interaction: VLR.gg + Valoscribe
 
-Ranked by prediction value vs CV extraction difficulty.
+How VLR.gg features combine with existing Valoscribe game mechanics for prediction.
 
-```
-HIGH VALUE, EASY EXTRACTION (implement first):
-- Round results (score delta detection)
-- Spike plant/defuse (status change detection)
-- Economy snapshots (existing OCR, add event emission)
-- First blood (derived from kill events)
-- Side detection (icon detection or round-based inference)
-- Alive differential (existing data, add trending)
+### Pre-Match Features (VLR.gg)
 
-HIGH VALUE, MEDIUM EXTRACTION (implement second):
-- Kill events (alive count delta detection)
-- Team identification (OCR or template matching)
-- Map identification (OCR during buy phase)
-- Round type classification (economy-based)
-- Post-plant analysis (combined features)
+Predict baseline win probability BEFORE the match:
+- Team A Elo: 1650
+- Team B Elo: 1550
+- Elo differential: +100 → ~60% baseline probability for Team A
 
-MEDIUM VALUE, MEDIUM EXTRACTION (implement if time allows):
-- Agent compositions (template matching, 22 agents)
-- Momentum tracking (round streak detection)
-- Buy phase classification (eco/force/full)
+Also includes:
+- Recent form (Team A won last 5 maps, Team B lost 3 of last 5)
+- Head-to-head (Team A 3-1 vs Team B historically)
+- Map pool strength (Bind: Team A 75% win rate, Team B 50% win rate)
 
-MEDIUM VALUE, HARD EXTRACTION (defer or deprioritize):
-- Ultimate tracking (10 player ult orbs, pixel sampling)
-- Comeback potential flags (derived logic)
+**Output:** Pre-match baseline probability (e.g., 65% Team A wins)
 
-LOW VALUE or IMPOSSIBLE (skip):
-- Player-level stats (not in broadcast)
-- Ability cooldowns (not shown)
-- Positioning/map control (unreliable)
-- Weapon inventory per player (marginal value)
-```
+### In-Match Features (Valoscribe)
 
-## MVP Feature Recommendation
+Update probability based on game events:
+- Score at half: 7-5 Team A
+- Pistol rounds: Team A won both
+- First blood rate: Team B 60% (better than expected)
+- Economy differential: +2000 credits Team A
+- Clutch rounds: Team A 3, Team B 1
 
-For initial milestone (event detection + persistent logging), prioritize:
+**Output:** Updated probability based on game state (e.g., 72% Team A wins)
 
-### Must-Have (Table Stakes)
-1. **Round result events** - Win/loss per round with metadata (alive counts, spike status, economy)
-2. **Kill events** - Alive count deltas (cannot identify who killed who, team-level only)
-3. **Spike plant/defuse/detonate events** - Critical economy/tactical shifts
-4. **Economy snapshots** - Total team economy during buy phase
-5. **Team identification** - OCR team names for training data labeling
-6. **Map identification** - OCR map name for baseline win rate calibration
-7. **Match session management** - Start/stop, metadata, multi-map series support
+### Combined Model
 
-### Nice-to-Have (Quick Wins)
-1. **First blood detection** - Derived from kill events (flag first kill per round)
-2. **Side detection** - Attacker/defender identification (icon or round-based)
-3. **Alive differential tracking** - Emit events when differential changes
-4. **Round type classification** - Pistol/eco/force/full based on economy
+**Two-stage approach:**
+1. **Pre-match stage:** VLR.gg features (Elo, recent form, map pool) → Baseline probability
+2. **Post-match stage:** Valoscribe features (34 game mechanics) → Final probability
 
-### Defer to Post-MVP
-1. **Agent compositions** - Requires building 22-agent template library
-2. **Ultimate tracking** - Complex, requires per-player pixel sampling
-3. **Momentum streaks** - Derived feature, lower priority
-4. **Player-level stats** - Not feasible from broadcast (no killfeed OCR)
+**Alternative: Single-stage model:**
+- Combine all features (Elo + 34 game mechanics) in one XGBoost model
+- Let model learn feature interactions (e.g., "Strong team underperforming in-game = upset")
 
-## Event Schema Recommendations
+**Research insight:** Sports prediction models with Elo + in-game features outperform either alone. Elo captures "who is playing", game mechanics capture "what happened", combination is stronger.
 
-Based on feature analysis, recommended event types for persistent logging:
+**Hypothesis for v3:** Adding Elo/Glicko + recent form will improve log loss by 5-10% vs game-mechanics-only baseline (to be validated in experiments).
 
-```json
-{
-  "event_type": "round_end",
-  "timestamp": "2024-03-15T18:42:33.123Z",
-  "round_number": 13,
-  "winner": "team_a",
-  "score": {"team_a": 7, "team_b": 6},
-  "alive_counts": {"team_a": 3, "team_b": 0},
-  "spike_status": "detonated",
-  "round_duration": 87.5,
-  "economy_snapshot": {"team_a": 24500, "team_b": 18200},
-  "round_type": "full_buy",
-  "first_blood": "team_b"
-}
-```
+## MVP Recommendation for v3
 
-```json
-{
-  "event_type": "kill",
-  "timestamp": "2024-03-15T18:41:28.456Z",
-  "round_number": 13,
-  "alive_before": {"team_a": 5, "team_b": 4},
-  "alive_after": {"team_a": 5, "team_b": 3},
-  "team_killed": "team_b"
-}
-```
+For v3 milestone (scale data & validate at volume), prioritize:
 
-```json
-{
-  "event_type": "spike_plant",
-  "timestamp": "2024-03-15T18:41:45.789Z",
-  "round_number": 13,
-  "round_timer_remaining": 32.5,
-  "alive_counts": {"team_a": 5, "team_b": 3}
-}
-```
+### Must-Scrape (Table Stakes)
+1. **Match metadata** - Teams, dates, tournament, stage, series format
+2. **Map names and scores** - For Valoscribe validation
+3. **YouTube VOD links** - Critical for scaling dataset to 150+ maps
+4. **Team identification** - Canonical team names/IDs
+5. **Match timestamps** - For temporal ordering (walk-forward validation)
 
-```json
-{
-  "event_type": "match_start",
-  "timestamp": "2024-03-15T18:30:00.000Z",
-  "teams": {"team_a": "Sentinels", "team_b": "LOUD"},
-  "map": "Bind",
-  "series_format": "Bo3",
-  "map_number": 1
-}
-```
+### High-Value Features (Differentiators)
+1. **Team strength rating** (Elo/Glicko) - Reconstruct from VLR.gg match history, time-weighted
+2. **Recent form** - Exponentially-weighted win rate over last 5-10 maps
+3. **Map pool strength** - Per-team, per-map win rates (if dataset has sufficient samples)
 
-## CV Extraction Feasibility Assessment
+### Defer to Post-Experiment Validation
+1. **Agent meta alignment** - Unclear predictive value, meta shifts reduce stability
+2. **Head-to-head records** - May not have sufficient samples for rare matchups
+3. **Tournament tier weighting** - Use for stratification, not as feature
 
-| Feature | Broadcast Visibility | Extraction Method | Reliability | Notes |
-|---------|---------------------|-------------------|-------------|-------|
-| **Scores** | Always visible top center | OCR | HIGH | Already implemented. Tesseract reliable on clean digits. |
-| **Alive counts** | Player portraits always visible | Color detection on health bars | MEDIUM-HIGH | Already implemented. Fails if overlay obscured. Brightness-based detection fragile (see CONCERNS.md). |
-| **Spike status** | Icon visible top center when planted | HSV color detection (red) | MEDIUM | Already implemented. Threshold-dependent (lighting variations). |
-| **Round timer** | Always visible top center | OCR | HIGH | Already implemented. Clean font, high contrast. |
-| **Economy** | Visible during buy phase only (~45s) | OCR | MEDIUM | Already implemented. Only extractable during buy phase; hidden during combat. Need phase detection. |
-| **Team names** | Visible top center (small text) | OCR or template matching | MEDIUM | Not implemented. Tesseract on small text less reliable. May need template matching on team logos instead. |
-| **Map name** | Visible during buy phase (large text) | OCR | HIGH | Not implemented. Shown clearly during buy phase, clean font. |
-| **Agent icons** | Portraits visible top of screen | Template matching | MEDIUM | Not implemented. Requires 22-agent template library. Icons are ~64x64px, consistent across matches. |
-| **Ultimate orbs** | Small circles under agent portraits | Pixel sampling (green = ready) | MEDIUM-LOW | Not implemented. Very small (~10x10px), requires precise ROI. Color detection fragile. |
-| **Side (attack/def)** | Icon visible OR inferable from round # | Icon detection or logic | HIGH | Not implemented. Simple logic: rounds 1-12 one side, 13+ swapped. |
-| **Killfeed** | Scrolling text bottom-right | OCR on dynamic text | LOW | Not implemented. Text scrolls quickly, overlaps with other UI. OCR challenging. Defer. |
+### Explicitly Avoid (Anti-Features)
+1. **Player-level statistics** (ACS, K/D, ADR) - Overfitting risk, outcome not predictor
+2. **Agent pick rates without map context** - Meta shifts, unstable signal
+3. **Tournament seeding/bracket position** - Redundant with Elo/Glicko
+4. **Arbitrary streak features** - Redundant with time-weighted recent form
 
-**Key takeaway:** Table stakes features (scores, alive counts, economy, spike) are reliably extractable from VCT broadcasts. Differentiators (agents, ultimates) require additional CV work with medium reliability. Player-level stats require killfeed OCR (low reliability) or game API (unavailable).
+## Scraper Requirements
 
-## Prediction Value by Feature Category
+Based on feature analysis, VLR.gg scraper must extract:
 
-Based on training data about tactical FPS mechanics and betting market efficiency:
+### Priority 1 (Blocking for dataset scaling)
+- **Match listings** from tournament pages
+- **YouTube VOD URLs** from match pages
+- **Match metadata**: teams (canonical names), date/timestamp, tournament name, stage, series format (Bo3/Bo5)
+- **Map results**: map names, scores per map
 
-| Feature Category | Win Probability Impact | Reasoning |
-|------------------|------------------------|-----------|
-| **Round wins** | 8-12% per round | Each round won = 1 step closer to map victory. Pistol rounds ~10%, normal rounds ~8%. |
-| **Economy advantage** | 15-25% | Full buy vs eco round = massive firepower gap. $30k vs $15k economy = 70-30 win rate. |
-| **Alive differential** | 2-5% per player | 5v4 = slight edge. 5v3 = major advantage. Non-linear: 5v1 nearly guaranteed round win. |
-| **Spike plant** | 10-15% | Attackers win ~60-65% post-plant even if outnumbered (defenders must push into crossfire + time pressure). |
-| **First blood** | 8-12% | Team with first kill wins round 65-70% of time. Removes utility + creates man advantage. |
-| **Ultimate availability** | 5-8% per ult ready | Team with 3+ ults has ~10-15% higher win rate (game-changing abilities like Brimstone orbital strike). |
-| **Map/side** | 5-10% baseline | Defender advantage on most maps (55-45 split). Bind/Haven slightly attacker-favored. |
-| **Agent composition** | 3-7% | Certain comps counter others. Meta shifts seasonally. Viper+Astra ~5% higher win rate on Icebox. |
-| **Momentum** | 3-5% | Psychological edge. 5-round win streak team has higher confidence, forcing opponents into desperate plays. |
+### Priority 2 (For team strength ratings)
+- **Match results** for Elo/Glicko reconstruction (chronologically ordered)
+- **Team identification**: VLR.gg team page IDs for canonical naming
+- **Map-level results per team** for map pool strength calculation
 
-**Most impactful for prediction markets:**
-1. Economy (15-25%) - Separates eco rounds from gun rounds
-2. Spike plant (10-15%) - Post-plant situations drastically shift odds
-3. Round wins (8-12%) - Series score progress
-4. First blood (8-12%) - Early round indicator
-5. Alive differential (2-5%) - Compounds with other factors
+### Priority 3 (For validation experiments)
+- **Agent compositions** from match pages (if available) for meta alignment
+- **Tournament tier** classification (Champions, Masters, Regional)
 
-**Why economy matters most:** Valorant economy is deterministic. Team with $30k buys rifles + full armor + utilities. Team with $15k buys pistols + light armor. Firepower gap creates 70-30 win probability. This is visible in broadcast and highly predictive.
+### Not Required (Anti-features)
+- **Player statistics** (ACS, K/D, ADR, KAST%, HS%) - Don't scrape unless for post-match analysis
+- **Player-agent proficiency** - Don't scrape
+- **Bracket seeding positions** - Don't scrape
 
-**Why player-level stats matter less:** Individual K/D or ADR reflects skill over many rounds, but doesn't shift single-round win probability as much as structural advantages (economy, alive counts, spike status). Team aggregates capture 90% of signal.
+## Implementation Complexity Assessment
 
-## Domain-Specific Considerations
+| Task | Complexity | Estimated Effort | Dependencies |
+|------|------------|------------------|--------------|
+| **Scrape match metadata** | Low | 2-4 hours | BeautifulSoup, requests, rate limiting |
+| **Scrape VOD links** | Low | 1-2 hours | Match page parsing |
+| **Build match manifest** | Low | 2-3 hours | CSV/JSON export, Valoscribe schema |
+| **Reconstruct Elo/Glicko** | Medium | 4-6 hours | Match history, chronological ordering, Elo library |
+| **Calculate recent form** | Medium | 3-4 hours | Time-decay weighting, hyperparameter tuning |
+| **Calculate map pool strength** | Medium | 3-5 hours | Per-team, per-map aggregation, sufficient samples check |
+| **Scrape agent compositions** | Medium | 4-6 hours | Match page parsing, agent name normalization |
+| **Integrate with prediction model** | Medium | 4-8 hours | Feature engineering pipeline, XGBoost integration |
+| **Validate prediction improvement** | Medium | 8-12 hours | Experiments, cross-validation, log loss comparison |
 
-### Valorant Game Mechanics Impact on Features
+**Total estimated effort for MVP (table stakes + Elo/recent form):** 20-35 hours
 
-**Economy reset on round loss:** Losing team loses equipment but gains loss bonus ($1900-2900). Creates force-buy decisions. Prediction models must track loss streaks to estimate economy recovery.
-
-**Ultimate point accumulation:** Ultimates charge via kills, orbs, and spike plants. Not time-based. Tracking ult status requires knowing charge rate per agent (varies 5-8 orbs). Complex. May not justify CV effort.
-
-**Pistol round importance:** Rounds 1 and 13 (pistol rounds) have ~10% impact on map outcome. Winning pistol → likely win round 2 (economy advantage) → 2-0 or 1-1 start. Flag pistol rounds in event logs.
-
-**Side swap at half (round 13):** Valorant maps favor defense (55-45 on average). Prediction models must know which side each team is playing. Extract from broadcast icon or infer from round number.
-
-**Spike plant credit reward:** Planting spike grants attacker team +300 credits each, even if round lost. This affects next-round economy. Models should track "spike planted but round lost" scenarios.
-
-### VCT Broadcast Overlay Specifics
-
-**Buy phase economy visibility:** Total team economy shown only during buy phase (~45 seconds at round start). Hidden during combat. CV pipeline must detect buy phase (timer = 0:45 or score unchanged for 45s) and extract economy before combat starts.
-
-**Agent portraits always visible:** Unlike player cams or minimap (shown intermittently), agent portraits remain top of screen throughout match. Reliable extraction target for agent composition.
-
-**Scoreboard overlay inconsistency:** VCT production sometimes overlays stats (K/D/A board) during timeouts or between rounds. This occludes vision ROIs. CV pipeline must detect scoreboard overlay and skip frame processing during those periods (or handle gracefully).
-
-**Resolution consistency:** VCT broadcasts are 1920x1080 (1080p60). Existing ROI coordinates assume this. If Riot upgrades to 4K broadcasts, all coordinates break. Document this assumption in concerns.
-
-### Training Data Requirements
-
-**Match outcome labels:** Each event log must be labeled with final match winner. Requires watching match to completion (or scraping result from Liquipedia/VLR.gg).
-
-**Minimum viable dataset:** Estimating based on training data about ML sample sizes:
-- Minimum: 50-100 maps (5,000-10,000 rounds) for basic logistic regression
-- Ideal: 200+ maps (20,000+ rounds) for robust predictions across agent metas, maps, and teams
-
-**Data staleness:** Agent balance patches every 2-3 months. Meta shifts. Training data from 6+ months ago less relevant. Continuous data collection required.
-
-**Class imbalance:** VCT matches often feature top teams vs lower-tier teams (70-30 win rates). Dataset may be imbalanced. Stratified sampling or reweighting required during model training.
+**Critical path bottleneck:** VOD processing time (46 VODs queued = 15-20 hours processing per PROJECT.md). Scraping is fast (~5-10 hours), but Valoscribe processing is slow. Parallelize if possible.
 
 ## Confidence Assessment
 
-| Area | Confidence Level | Source | Notes |
-|------|------------------|--------|-------|
-| **Valorant game mechanics** | HIGH | Training data (game design, competitive rules) | Mechanics unlikely to change drastically. Economy/spike/round structure is core. |
-| **VCT broadcast overlay** | MEDIUM | Training data + existing codebase analysis | Overlay format may change between seasons. ROI coordinates break on UI refresh. |
-| **Prediction market value** | MEDIUM | Training data (esports betting, FPS mechanics) | Win probability shifts are estimates based on general FPS principles, not Valorant-specific studies. |
-| **CV extraction feasibility** | HIGH | Existing codebase + OpenCV capabilities | Scores, alive counts, economy, spike status are already extracted. New features (teams, map, agents) feasible with template matching. |
-| **Feature priority** | MEDIUM-HIGH | Training data + project context | Prioritization based on prediction value and CV difficulty is sound, but lacks real-world validation with trained models. |
-| **2026 current state** | LOW | WebSearch unavailable | Cannot verify if VCT broadcast overlay changed in 2025-2026, if agent roster expanded, or if new game mechanics introduced. Assume training data (Jan 2025) is current. |
+| Area | Confidence | Source | Notes |
+|------|------------|--------|-------|
+| **VLR.gg data structure** | MEDIUM | WebFetch (match results page), WebSearch (scraper tools, Kaggle dataset) | Match pages show stats, teams, VOD links, agent comps. Structure confirmed. May change over time (site redesign risk). |
+| **Team strength ratings (Elo/Glicko)** | HIGH | WebSearch (sports prediction research, esports AI case studies) | Well-established in sports prediction. Esports AI achieved 69% accuracy with Elo/Glicko. Glicko preferred for roster changes. |
+| **Recent form features** | HIGH | WebSearch (Dixon-Coles time-weighting, sports prediction models) | Time-decay weighting standard in sports prediction. 3-5% prediction boost documented. Hyperparameter tuning needed for optimal decay. |
+| **Overfitting risks** | HIGH | WebSearch (ML overfitting on small datasets, feature selection) | "Large p, Small n" problem well-documented. 150 maps with 50+ features = HIGH risk. Regularization + CV critical. |
+| **Player statistics as anti-feature** | MEDIUM-HIGH | Project context ("player-level features overfit on small dataset"), WebSearch (overfitting prevention) | Previous decision validated. 150 maps still too small for player-level features (~30 maps per player). Team aggregates sufficient. |
+| **Agent meta stability** | MEDIUM | WebSearch (Valorant 2026 meta, Clove 54.7% win rate) | Meta shifts confirmed (Patch 11.08, Patch 12.0). Agent balance changes every 2-3 months. Time-windowed features needed. LOW confidence on predictive value until validated. |
+| **Map pool strength** | MEDIUM | Training data (map-specific win rates in Valorant), logic inference | With 150 maps, ~5-10 per team per map. Sufficient for aggregate rates. Addresses map selection bias. Needs validation. |
+| **VLR.gg scraping feasibility** | HIGH | WebSearch (unofficial APIs, scraper tools on GitHub) | Multiple scraper implementations exist (axsddlr/vlrggapi, Yuji1702/Valorant-Data-Scrapper). Site is scrapable. Rate limiting needed. |
 
-**Major assumption:** VCT broadcast overlay format has not changed significantly since training data cutoff (Jan 2025). If Riot redesigned overlay in 2025-2026, ROI coordinates and feature extraction approach may need recalibration.
+**Major assumptions:**
+1. VLR.gg site structure remains stable (no major redesign mid-scraping)
+2. 150+ maps sufficient to stabilize team strength ratings (Elo/Glicko needs ~5-10 matches per team)
+3. Valoscribe VOD processing completes successfully for scraped VOD links
+4. Adding Elo/Glicko + recent form improves log loss vs mechanics-only baseline (hypothesis, needs validation)
 
 **Verification needed:**
-- WebSearch for "VCT 2026 broadcast overlay changes" (unavailable currently)
-- Test extraction pipeline against live VCT match from 2026 to verify ROI coordinates still valid
-- Validate agent roster (training data shows ~22 agents; more may have been added in 2025-2026)
+1. Run scraper on VLR.gg and validate data quality (team names consistent, VOD links valid)
+2. Process 10-20 VODs from VLR.gg links through Valoscribe to confirm compatibility
+3. Reconstruct Elo/Glicko from VLR.gg match history and validate ratings make sense (stronger teams have higher Elo)
+4. Run ablation study: mechanics-only vs mechanics+Elo vs mechanics+Elo+recent_form (measure log loss improvement)
 
 ## Research Gaps and Next Steps
 
 **Gaps in this research:**
 
-1. **2026 VCT broadcast format verification:** Cannot confirm overlay layout unchanged since training data cutoff. Risk: ROI coordinates may be stale.
+1. **VLR.gg API availability:** WebSearch found unofficial APIs (axsddlr/vlrggapi). Need to validate if these work in 2026 or if custom scraper needed. Site structure may have changed.
 
-2. **Agent meta current state:** Training data from Jan 2025. Agent balance patches since then may shift composition importance. New agents released?
+2. **VOD coverage rate:** Don't know what % of VLR.gg matches have VOD links. Champions 2025 likely high (~90%), older tournaments lower. Affects dataset scaling feasibility.
 
-3. **Prediction market liquidity:** Don't know if Polymarket/Kalshi have liquid VCT markets in 2026. If markets are thin, prediction edge may not translate to profitable trades.
+3. **Agent composition extraction:** VLR.gg match pages show agent comps, but format unclear (icons? text?). Need to inspect actual match page HTML to confirm scrapability.
 
-4. **Competitor analysis:** No data on what features other Valorant prediction systems use. Are we over-engineering (ultimate tracking) or under-engineering (missing critical features)?
+4. **Player roster stability:** Team rosters change between tournaments. Elo/Glicko assumes stable rosters. If 50% roster turnover, ratings less stable. Need to check VLR.gg for roster change data.
 
-5. **Feature interaction effects:** Research estimates individual feature impact (economy = 15-25%, first blood = 8-12%) but doesn't model interactions. Reality: "First blood + economy advantage + spike plant" compounds non-linearly.
+5. **Optimal Elo parameters:** K-factor, initial rating, decay rate for esports unknown. Sports models use K=32, but esports may differ (more volatile, roster changes). Needs hyperparameter tuning.
+
+6. **Feature interaction effects:** Research estimates independent contributions (Elo = baseline, game mechanics = update). But interactions may be non-linear ("Strong team underperforming" = different signal than "Weak team underperforming"). XGBoost should capture this, but needs validation.
 
 **Recommended next steps:**
 
-1. **Validate against live 2026 VCT match:** Run existing CV pipeline against current VCT broadcast. Verify ROI coordinates still accurate.
+1. **Inspect VLR.gg match page HTML** (WebFetch or manual inspection) to confirm agent comp format and scrapability
+2. **Test unofficial VLR.gg API** (axsddlr/vlrggapi) to see if it works in 2026 or if custom scraper needed
+3. **Scrape 10-20 matches** as pilot and validate data quality (team names, VOD links, map results)
+4. **Process pilot VODs** through Valoscribe to confirm pipeline compatibility
+5. **Reconstruct Elo/Glicko** from pilot matches and validate ratings (eye test: do strong teams have higher Elo?)
+6. **Run ablation experiments** after dataset reaches 100+ maps (mechanics-only vs mechanics+Elo)
+7. **Iterate based on log loss improvements** (if Elo doesn't help, investigate why; if it helps, add recent form)
 
-2. **Phase-specific research during implementation:** When implementing agent compositions, research current agent roster and meta (may have changed since Jan 2025).
+## Sources
 
-3. **Prediction model validation:** After collecting initial event logs, train basic model and measure calibration. If predictions are poorly calibrated, revisit feature priorities.
+### VLR.gg Data Structure
+- [VLR.gg Match Results](https://www.vlr.gg/matches/results) - WebFetch confirmed teams, scores, VOD links, stats links
+- [Kaggle: Valorant vlr.gg Results and Stats](https://www.kaggle.com/datasets/hidious/valorant-vlrgg-results-and-stats) - Dataset structure includes date, teams, winner, scoreline, series type
+- [Medium: Creating A Valorant Player Stats Dataset](https://medium.com/@amanrao032/creating-a-valorant-player-stats-dataset-60abbd82b76f) - Describes scraping with Selenium/BeautifulSoup
 
-4. **Competitor research (if time allows):** Search for "Valorant prediction models" or "VCT betting systems" to see what features others prioritize. May reveal overlooked high-value features.
+### VLR.gg Scraping Tools
+- [GitHub: axsddlr/vlrggapi](https://github.com/axsddlr/vlrggapi) - Unofficial REST API for vlr.gg (FastAPI-based)
+- [GitHub: Yuji1702/Valorant-Data-Scrapper](https://github.com/Yuji1702/Valorant-Data-Scrapper) - Python tool for scraping player statistics, multithreaded
+- [GitHub: akhilnarang/vlrgg-scraper](https://github.com/akhilnarang/vlrgg-scraper) - Another VLR.gg scraper implementation
 
-5. **Iterate based on data collection:** Features that seem high-value theoretically may be unreliable in practice (e.g., ultimate tracking may be too noisy from broadcast). Be ready to deprioritize.
+### Valorant Match Statistics
+- [VLR.gg Player/Agent Stats](https://www.vlr.gg/stats) - ACS, K/D, combat score, econ rating, kills, deaths, assists
+- [What Is KAST In VALORANT?](https://www.esports.net/wiki/guides/what-is-kast-valorant/) - KAST = Kill, Assist, Survive, Trade percentage
+- [VCT 2026: Americas Kickoff: Agent Pick Rates](https://www.vlr.gg/event/agents/2682/vct-2026-americas-kickoff) - Agent compositions per tournament
 
-## Sources and Methodology
+### Agent Meta (2026)
+- [5 agents that could dominate the VALORANT meta in 2026](https://esportsinsider.com/valorant-meta-agents-2026) - Clove 54.7% win rate, 59.6% pick rate
+- [Best VALORANT team comps in Season V26, Act One](https://esportsinsider.com/best-valorant-comps) - Double-initiator comps, gunplay-focused meta
+- [VALORANT Patch 12.0 Meta Guide](https://www.dtgre.com/2026/01/valorant-patch-12-meta-guide.html) - Bandit pistol changes, Breeze rework, agent buffs
 
-**Research sources (training data only; WebSearch unavailable):**
+### Predictive Modeling Research
+- [A Predictive Analysis of Valorant Esports](https://www.techrxiv.org/users/916972/articles/1289732/master/file/data/Valorant%20Esports%20Predictive%20Model%20Analysis/Valorant%20Esports%20Predictive%20Model%20Analysis.pdf) - Random Forest 93% accuracy, ultimate ability and economy impact on round win probability
+- [Round Outcome Prediction in VALORANT Using Tactical Features](https://arxiv.org/html/2510.17199v1) - 81% accuracy using minimap information
 
-- **Valorant game mechanics:** Training data about tactical FPS economy systems, round-based gameplay, agent abilities (as of Jan 2025 knowledge cutoff)
-- **VCT broadcast analysis:** Existing codebase analysis (vision_engine.py, config.py, PROJECT.md, ARCHITECTURE.md, CONCERNS.md)
-- **Esports prediction systems:** Training data about feature engineering for match outcome prediction, betting market efficiency, event impact on win probability
-- **Computer vision feasibility:** Training data about OCR (Tesseract) capabilities, template matching, color detection, limitations of broadcast analysis
+### Team Strength Ratings
+- [Sports Ratings Guide: Elo, Glicko, RPI](https://prosportstance.com/sports-ratings-guide-elo-glicko-rpi-and-strength-of-schedule/) - Elo vs Glicko for esports
+- [Unleashing the Power of AI: Predicting Esports Matches](https://www.toolify.ai/ai-news/unleashing-the-power-of-ai-predicting-esports-matches-2630330) - 69% prediction accuracy with Elo/Glicko
+- [Abstracting Glicko-2 for Team Games](https://rhetoricstudios.com/downloads/AbstractingGlicko2ForTeamGames.pdf) - Glicko ratings deviation for roster changes
 
-**Methodology:**
+### Recent Form / Time-Decay Weighting
+- [Dixon-Coles and Time-Weighting](https://dashee87.github.io/football/python/predicting-football-results-with-statistical-modelling-dixon-coles-and-time-weighting/) - Exponential decay for recent matches
+- [Time-Weighting Predictive Models](https://artiebits.com/blog/improving-poisson-model-using-time-weighting/) - Optimal decay parameter tuning via cross-validation
+- [Bayesian weighted discrete-time dynamic models](https://arxiv.org/html/2508.05891v1) - Time-varying precisions for team abilities
 
-1. **Domain analysis:** Identified Valorant-specific mechanics (economy resets, spike plant rewards, pistol round importance) that affect feature priorities
-2. **CV constraint mapping:** Cross-referenced VCT broadcast overlay visibility (what's shown on screen) with CV extraction techniques (OCR, template matching, color detection)
-3. **Prediction value estimation:** Applied FPS game theory (alive differential impact, economy gap impact) to estimate win probability shifts per feature
-4. **Feasibility assessment:** Categorized features by CV extraction difficulty (easy/medium/hard) based on existing codebase capabilities and overlay visibility
-5. **Priority matrix:** Ranked features by prediction value vs implementation difficulty to guide MVP scope
-
-**Limitations:**
-
-- No access to 2026 VCT broadcasts for verification (WebSearch blocked)
-- No competitor analysis (cannot research existing Valorant prediction systems)
-- Win probability estimates based on general FPS principles, not Valorant-specific empirical studies
-- Feature interaction effects not modeled (assumes independent contributions, which is oversimplification)
+### Overfitting Prevention
+- [Techniques and pitfalls for ML training with small data sets](https://www.trustbit.tech/blog/2021/06/30/techniques-and-pitfalls-for-ml-training-with-small-data-sets) - Large p, Small n problem
+- [Overfitting in Machine Learning](https://elitedatascience.com/overfitting-in-machine-learning) - Feature selection, cross-validation, regularization
+- [8 Simple Techniques to Prevent Overfitting](https://towardsdatascience.com/8-simple-techniques-to-prevent-overfitting-4d443da2ef7d/) - Dimensionality reduction, PCA
 
 ---
 
-*Feature research complete. Confidence: MEDIUM (training data-based; 2026 verification pending). Ready for roadmap creation.*
+*Research complete. Confidence: MEDIUM (VLR.gg structure verified, team strength ratings well-researched, overfitting risks documented). Ready for scraper requirements definition and roadmap creation.*

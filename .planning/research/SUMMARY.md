@@ -1,348 +1,334 @@
 # Project Research Summary
 
-**Project:** Valorant VCT Event Detection & Logging Pipeline
-**Domain:** Computer vision-based esports event data collection
-**Researched:** 2026-02-12
-**Confidence:** MEDIUM-HIGH
+**Project:** Val-Prediction-Model v3 - Scale Data & Validate at Volume
+**Domain:** VCT match prediction with CV-extracted VOD data + VLR.gg metadata
+**Researched:** 2026-02-14
+**Confidence:** HIGH
 
 ## Executive Summary
 
-This project extends an existing Python computer vision pipeline to transform frame-by-frame broadcast analysis into a persistent event logging system for Valorant competitive matches. The research reveals that successful VCT event detection systems prioritize **state change detection over continuous snapshots**, **local-first storage over cloud complexity**, and **incremental adoption of existing CV infrastructure** rather than ground-up rewrites.
+The v3 milestone scales the prediction dataset from 71 hand-curated maps to 150+ automated maps through VLR.gg scraping integration. Research reveals this is fundamentally a **data discovery and pipeline automation** problem, not a feature engineering or modeling problem. The existing prediction framework (34 game-mechanics features, XGBoost models, walk-forward CV) remains intact; v3 adds a discovery layer (VLR.gg scraping for VOD URLs + match metadata) and a batch processing layer (automated Valoscribe orchestration).
 
-The recommended approach builds on the existing OpenCV + pytesseract stack with three critical additions: (1) upgrading to EasyOCR for better accuracy on stylized game fonts, (2) implementing a state machine to detect changes between frames and emit discrete events, and (3) using SQLite for persistent event storage with ACID guarantees. This architecture enables training data collection for prediction models while maintaining the proven frame extraction pipeline already in place.
+The recommended approach treats VLR.gg as a **match manifest source** that feeds the existing Valoscribe processing pipeline, with team strength features (Elo/Glicko) as the only new predictive capability. Stack additions are minimal and focused: httpx for async scraping, pyrate-limiter for politeness, tqdm for progress visibility, and stdlib SQLite for experiment tracking. No heavyweight orchestration needed - joblib and concurrent.futures handle parallelization at this scale (150 maps, 4-8 experiments).
 
-The highest risk is **replay footage contamination** — VCT broadcasts frequently show replays during timeouts and between rounds, which appear identical to live gameplay to the CV system. Without replay detection, event logs become polluted with duplicate events that have incorrect timestamps, corrupting prediction model training data. Prevention requires multi-signal validation (timer regression detection, alive count coherence checks, score monotonicity verification) implemented from day one. Other critical risks include overlay format changes breaking hardcoded ROI coordinates and OCR debouncing failures creating event storms — both addressable through versioned configuration and temporal smoothing.
+**Key risk:** VOD availability decay (YouTube videos deleted/privatized) creates non-reproducible datasets. Mitigation is time-based: scrape VLR.gg and process VODs within 48 hours, before deletion windows open. Secondary risk is ReplayDetector validation failure at scale - existing detector validated on Champions 2025 (high-quality 1080p60), but older tournaments may have degraded video quality (lower bitrate/resolution) causing OCR errors and over-suppression. Quality gates (OCR success rate thresholds, replay count distribution validation) required per tournament.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The stack extends existing Python CV infrastructure (OpenCV, streamlink) with event detection, state management, and persistent storage capabilities. The approach is **incremental adoption** — add new components alongside existing code rather than replacing proven frame extraction logic.
+v3 adds web scraping, rate limiting, and progress tracking capabilities to the existing ML stack. The approach is conservative: add only what's necessary for 150-map scale, defer heavyweight orchestration (Airflow, MLflow, DVC) until proven necessary at 500+ maps.
 
-**Core technologies:**
-- **EasyOCR (1.7.x+)**: Game overlay text extraction — Better accuracy than pytesseract on stylized fonts, GPU-accelerated, no Windows Tesseract installation complexity
-- **SQLite + SQLAlchemy (2.0.x+)**: Event storage with ACID transactions — Zero-config persistence, excellent query performance for ML training data retrieval, built-in schema migration support
-- **python-statemachine (2.1.x+)**: Game phase transitions — Explicit state machine for menu → agent_select → in_game → post_round flow prevents invalid event sequences
-- **deepdiff (6.7.x+)**: State change detection — Semantic diffing of OCR results (team rosters, agent compositions) without manual field comparison
-- **diskcache + imagehash (5.6.x+, 4.3.x+)**: Frame deduplication — Cache OCR results by perceptual hash, avoid re-processing identical frames from stream buffering
+**Core additions:**
+- **httpx (0.28.1):** Async HTTP client for VLR.gg scraping - enables concurrent page fetching without blocking, modern alternative to requests with sync/async APIs
+- **pyrate-limiter (4.0.2):** Leaky bucket rate limiting - prevents VLR.gg flooding (1 req/sec community recommendation), supports multiple rate limits (1/sec + 100/min)
+- **tqdm (4.67.3):** Progress bars for long-running VOD processing (15-20 hours for 46 VODs) - provides ETA, integrates with joblib, zero dependencies
+- **SQLite (stdlib):** Local experiment tracking - zero-dependency metadata persistence, sufficient for 150 maps (~1MB database)
 
-**Critical upgrade rationale:**
-Pytesseract struggles with VCT's custom fonts and requires separate binary installation on Windows. EasyOCR is trained on synthetic data, handles stylized text better, and includes GPU acceleration critical for real-time processing (100-200ms/frame vs 300-500ms with pytesseract CPU mode).
+**Existing stack (preserved):**
+- scikit-learn, XGBoost, Optuna for ML pipeline
+- BeautifulSoup4 + lxml for HTML parsing (already installed)
+- joblib for parallel VOD processing (transitive from sklearn)
+- concurrent.futures for experiment orchestration (stdlib)
+- Valoscribe (D:\Git\valoscribe) for VOD processing (actively developed alongside)
 
-**Storage rationale:**
-SQLite provides ACID guarantees preventing data loss during stream interruptions, indexes on timestamps enable efficient temporal queries, and local-first storage aligns with project constraints. Export to Parquet for ML training consumption, but primary storage in SQLite.
+**Anti-recommendations:**
+- DO NOT add Airflow/Prefect/Metaflow - orchestration overhead unjustified for embarrassingly parallel processing (150 maps = 20 hours, no DAG complexity)
+- DO NOT add MLflow - adds 15+ dependencies (Flask, SQLAlchemy, protobuf) for features not needed until v4 (model registry, deployment tracking)
+- DO NOT use Playwright/Selenium - VLR.gg serves static HTML, browser automation adds 100+ MB dependency and 10x slowdown
 
 ### Expected Features
 
-Event detection systems separate into **table stakes** (minimum viable), **differentiators** (competitive edge), and **anti-features** (tempting but low-value).
+VLR.gg data provides two categories of value: **table stakes** (metadata needed to build a training dataset at scale) and **differentiators** (team strength features that add predictive signal beyond game mechanics).
 
-**Must have (table stakes):**
-- **Round result events** — Win/loss detection via score increments, foundation for match outcome prediction
-- **Kill detection** — Alive count deltas (team-level only, cannot identify individual players from broadcast)
-- **Spike plant/defuse/detonate** — Critical economy shifts and tactical context
-- **Economy snapshots** — Total team economy during buy phase determines eco/force/full buy classification
-- **Team/map identification** — OCR team names and map for training data labeling
-- **Match session management** — Persistent logs with start/stop metadata, multi-map series support
+**Must scrape (table stakes):**
+- Match metadata (teams, date, tournament, stage, series format) - required for temporal ordering and walk-forward validation
+- Map names and scores - required to match VLR.gg matches to Valoscribe processed maps
+- YouTube VOD links - primary data source for Valoscribe processing (this is the critical bottleneck for scaling from 71 to 150+ maps)
+- Team identification (canonical naming) - required to track team history for strength ratings
 
-**Should have (competitive):**
-- **First blood detection** — Team with first kill wins 65-70% of rounds (high prediction value, easy to derive from kill events)
-- **Side detection** — Attacker vs defender identification (affects baseline win probabilities by 5-10%)
-- **Round type classification** — Pistol/eco/force/full buy based on economy (adjusts win probability baseline)
-- **Alive differential tracking** — 5v4 vs 5v3 progression reveals momentum (medium prediction value, already tracked)
+**Should add (differentiators):**
+- Team strength rating (Elo/Glicko) - pre-match baseline probability (~60-65% accuracy before game mechanics), reconstructed from VLR.gg match history with time-decay weighting
+- Recent form (time-weighted win rate) - captures momentum and meta adaptation, research shows 3-5% prediction boost in sports models
+- Map pool strength (per-team, per-map win rates) - addresses map selection bias, sufficient samples at 150+ maps (~5-10 per team per map)
 
-**Defer (v2+):**
-- **Agent compositions** — Requires 22-agent template library, meta shifts seasonally (defer to Phase 3+)
-- **Ultimate status tracking** — Complex per-player pixel sampling, medium-high value but high CV difficulty (Phase 3+ with research flag)
-- **Player-level stats** — Not visible in broadcast without killfeed OCR (low feasibility, defer indefinitely)
+**Defer (v2+ or post-validation):**
+- Agent meta alignment - unclear predictive value, meta shifts every patch reduce stability
+- Head-to-head records - may lack sufficient samples for rare matchups
+- Tournament tier weighting - use for stratification, not as feature
 
-**Critical anti-features to avoid:**
-- **VOD scraping historical data** — Overlay formats change seasonally, ROI coordinates break, fresh current-season data > stale historical data
-- **Real-time price integration** — Out of scope for data collection milestone, adds complexity without improving data quality
-- **Positioning/map control** — Minimap too small and inconsistently shown in broadcasts, unreliable extraction
+**Anti-features (explicitly avoid):**
+- Player-level statistics (ACS, K/D, ADR) - overfitting risk HIGH, 150 maps = only ~30 per player, stats are outcome not predictor
+- Agent pick rates without map context - meta shifts every 2-3 months invalidate training data
+- Tournament seeding/bracket position - redundant with Elo/Glicko, correlation not causation
+- Arbitrary streak features - redundant with time-weighted recent form
+
+**Key insight:** VLR.gg data's primary value is NOT adding more features (34 game-mechanics features already comprehensive). Its value is (1) scaling dataset via VOD discovery, and (2) team identity features that enable strength-of-opponent adjustments previously impossible with identity-blind game mechanics.
 
 ### Architecture Approach
 
-The architecture wraps existing `VCTVisionEngine` with event-oriented components following **event sourcing patterns** — append-only logs with state reconstruction, state change detection via diffing, persistent event store with match session management.
+The architecture adds a **discovery layer** (VLR.gg scraping) and **batch processing layer** (VOD orchestration) while preserving the existing prediction pipeline. Integration strategy: separate output directories (existing 71 maps vs. new scraped maps) until feature engineering, then merge at dataset level.
 
-**Major components:**
+**New components:**
 
-1. **StateTracker** — Maintains previous/current frame state, detects changes (score increments → round end, alive count decrements → kills, spike status transitions → plant/defuse). Encapsulates state ownership for testability and thread safety.
+1. **VLREventScraper** (src/scraping/vlr_events.py) - Discovery layer that extracts match URLs and VOD metadata from VLR.gg tournament pages, calls Valoscribe's scrape_match() for per-match extraction, outputs VODRecords to manifest
 
-2. **EventEmitter** — Transforms `StateChange` objects into timestamped `Event` objects with match context. Separates diffing logic from serialization/formatting for single responsibility.
+2. **ProcessingManifest** (src/scraping/manifest.py) - State tracking for resumable processing, tracks VOD status (pending/downloading/processing/complete/failed), uses atomic JSON writes (temp file + rename) to prevent corruption
 
-3. **EventStore** — Append-only JSONL event logs per match. Crash-safe buffered writes, one file per match with hierarchical directory structure for scaling to 1M+ events.
+3. **VODOrchestrator** (src/scraping/orchestrator.py) - Batch processor that orchestrates: download VOD via Valoscribe -> process through Valoscribe OCR pipeline -> cleanup multi-GB files -> update manifest atomically
 
-4. **EventPipeline** — Orchestrator coordinating frame processing, state tracking, event emission, and storage. Isolates `VCTVisionEngine` (stateless) from event system (stateful).
+4. **ProcessingConfig** (src/scraping/config.py) - Environment-based configuration (Valoscribe repo path, output directories, rate limits, timeouts)
 
-5. **MetadataExtractor** — Auto-detects team names and map from broadcast overlay using OCR with majority-vote validation across first 10 frames.
+5. **DatasetBuilder** (src/data/builder.py) - Merge layer that combines existing 71 maps + newly scraped maps into unified dataset, thin wrapper over existing loader
+
+**Integration points:**
+- Valoscribe CLI (external dependency): download, scrape-vlr, split-metadata, process-vod commands (may need to add some to Valoscribe)
+- Existing data loader: DatasetBuilder discovers from multiple directories, calls existing load_map() on merged dict
+- Existing feature pipeline: no changes, receives larger map_data_list
+- Experiment runner: uses DatasetBuilder instead of manual loading, rest unchanged
 
 **Data flow:**
-Stream → Frame (6fps) → VCTVisionEngine.analyze() → StateTracker.update() → EventEmitter.emit_events() → EventStore.append() → Persistent JSONL log
+```
+VLR.gg event page -> VLREventScraper -> Manifest (VODRecords) -> VODOrchestrator
+                                                                       |
+                    Valoscribe (batch) -> JSONL events -> DatasetBuilder -> Feature pipeline -> Model
+```
 
-**Build order:**
-Phase 1 builds state diffing foundation (StateTracker, unit tests), Phase 2 adds event emission + storage (EventEmitter, EventStore, integration tests), Phase 3 integrates pipeline with existing GameWatcher, Phase 4 adds metadata extraction, Phase 5 implements match session management for BO3/BO5 series.
+**Separation of concerns:** VLREventScraper knows VLR.gg HTML, not Valoscribe processing. VODOrchestrator knows Valoscribe CLI, not feature extraction. DatasetBuilder knows Valoscribe output format, not scraping. Feature pipeline knows MapData schema, not data sources.
 
 ### Critical Pitfalls
 
-**1. Replay footage creating phantom events**
-VCT broadcasts show replays during timeouts and between rounds. Without detection, duplicate events with wrong timestamps corrupt event logs. A single 30-second replay injects 5-10 false kill events. **Prevention:** Multi-signal validation — timer regression detection (timer increases = replay), alive count coherence (counts should only decrease except at round reset), score monotonicity (score never decreases). OCR for "REPLAY" text overlay. Must implement in Phase 1 before processing any matches.
+Research identified 5 critical pitfalls that cause rewrites, data poisoning, or major infrastructure issues:
 
-**2. Hardcoded ROI coordinates breaking on overlay updates**
-VCT updates broadcast graphics between events (Champions vs Masters vs Kickoff overlays vary). Hardcoded coordinates suddenly extract garbage. System appears to work (no crashes) but logs invalid data. **Prevention:** Overlay version detection via fingerprinting constant elements, multi-version ROI config sets (VCT_2024_CHAMPIONS, VCT_2025_KICKOFF), runtime sanity checks (if OCR fails >10 frames, alert wrong ROI), consolidate config.py vs vision_engine.py duplicate ROI definitions. Address in Phase 2 before multi-match processing.
+1. **VOD Availability Decay (Broken Pipeline)** - YouTube streamers delete VODs after 60/14/7 days (DMCA prevention), tournament organizers privatize videos. Dataset becomes non-reproducible. Prevention: process VODs within 48 hours of scraping, validate all URLs accessible before queueing, track "intended dataset" vs "available dataset" with tombstone records, implement gap-aware walk-forward CV.
 
-**3. State debouncing failures creating event storms**
-OCR flickers between correct/incorrect values (timer reads "1:30", "1", "1:30", "1:3C"). Each flicker triggers state change. Single kill generates 5-10 duplicate events as alive_count oscillates. **Prevention:** Require state to persist for 3-5 consecutive frames before emitting event, confidence thresholds on OCR results, hysteresis on brightness thresholds for alive detection, event deduplication (check if identical event occurred in last 2 seconds). Critical for Phase 1 — determines data quality.
+2. **Batch Processing Failure Opacity (Silent Corruption)** - Queue 150 VODs overnight, crash at #83, wake to 82 completed maps, assume success, train on partial dataset. Prevention: processing manifest with per-VOD status tracking, atomic completion markers (.SUCCESS files), resumable processing (skip completed VODs), exit non-zero if ANY VOD fails, post-run validation (compare completed vs intended).
 
-**4. Buy phase vs combat phase state conflation**
-Economy data only visible during buy phase (first 30-45s of round). During combat, economy UI hidden. Code reads economy ROI during combat, gets 0 or noise, logs false "economy dropped to 0" events. **Prevention:** Phase detection state machine (buy phase = timer 1:40-1:10, combat = timer <1:10 or spike planted), cache last valid economy during combat, only emit buy_type events during buy phase. Required for Phase 2 economy extraction — attempting without phase awareness produces unusable data.
+3. **ReplayDetector Validation Failure at Scale (Unverified Detector)** - Detector validated on Champions 2025 (1080p60) fails on older tournaments (720p30 lower bitrate), silently over-suppresses live footage or leaks replay events. Prevention: track OCR success rate per map, plot replay_count distribution (outliers = detector failure), tournament-stratified validation, spot-check 5% of maps, quality gate (exclude maps with replay_count outside [p5, p95]).
 
-**5. Frame-level vs event-level timestamp precision confusion**
-Frame capture at 6fps = every ~166ms. Actual game events at 60fps. Two kills 50ms apart appear simultaneous. Can't distinguish "trade kill" (50ms) from "double kill" (1000ms). **Prevention:** Use round timer OCR as game_time timestamp, store both wall_clock_time (frame capture) and game_time (timer), include frame_number for exact ordering, accept ~166ms uncertainty and document it. Timestamp strategy decision in Phase 1 — changing schema after data collection requires reprocessing all matches.
+4. **Temporal Validation Collapse with Small Dataset Expansion (Overfitting Mirage)** - 71 maps shows log loss 0.52, expand to 150 maps shows 0.68, conclude new data is "low quality" and discard. Reality: 71 was too small for reliable CV, 0.52 was overfitted. Prevention: report log loss with bootstrapped 95% CI, document "performance unstable until N>300", plot log loss vs training set size (expect monotonic improvement), hold-out test set (reserve recent tournament, evaluate ONCE), baseline comparison.
 
-**Additional moderate pitfalls:**
-- Stream quality variations (1080p → 720p mid-match) breaking brightness thresholds → Requires adaptive calibration in Phase 2
-- Team/map OCR typos ("LOUD" → "L0UD") propagating → Fuzzy matching against whitelist in Phase 1
-- Round transition detection failures → Multi-signal detection (score + timer + alive) in Phase 1
-- Agent/ultimate CV detection too fragile (<70% accuracy) → Defer to Phase 3 with research flag, may need alternative approach
+5. **Meta Drift Blindness (Stale Model)** - Train on 2024 data (patches 8.0-8.11), deploy for 2025 matches (patch 9.0+), Riot nerfs Jett/buffs Killjoy, model predictions based on outdated meta. Prevention: recency weighting (inverse-time decay for training samples), rolling window training (last 6 months only), patch-aware splits (train pre-patch, test post-patch), performance monitoring (alert if 7-day log loss exceeds training baseline by >0.10).
+
+**Moderate pitfalls** include VLR.gg schema drift (site redesign breaks scraper), match format inconsistency (BO3 vs BO5 confusion), OCR degradation on older VODs (lower bitrate = more errors), ablation study design ambiguity (confounded experiments), and cross-tournament validation misinterpretation (LOTO fallacy).
 
 ## Implications for Roadmap
 
-Based on research, suggested phase structure prioritizes **foundation before features** — build reliable state change detection and event storage before attempting complex CV extractions (agents, ultimates).
+Based on research, v3 should follow a 5-phase structure that prioritizes risk reduction and validates integration points before scaling.
 
-### Phase 1: Event Detection Foundation
-**Rationale:** Core state diffing and event emission logic with zero external dependencies. Easy to test in isolation. Establishes data quality patterns that all later phases depend on.
-
-**Delivers:**
-- StateTracker component (score/alive/spike change detection)
-- GameState and StateChange dataclasses
-- Replay detection (timer regression, alive coherence, score monotonicity)
-- State debouncing (3-frame consensus)
-- OCR character whitelisting and validation
-- Round transition detection (multi-signal: score + timer + alive)
-- Unit tests with mock state sequences
-
-**Addresses features:**
-- Round result detection (table stakes)
-- Kill event detection (table stakes)
-- Spike plant/defuse events (table stakes)
-
-**Avoids pitfalls:**
-- Pitfall #1: Replay footage (multi-signal validation from day one)
-- Pitfall #3: Event storms (debouncing before any events logged)
-- Pitfall #5: Timestamp confusion (decision on timestamp strategy upfront)
-
-**Research flag:** None — state diffing is deterministic logic, no external research needed.
-
-### Phase 2: Event Emission & Persistent Storage
-**Rationale:** Depends on StateTracker but not on CV pipeline complexity. Can test with mock state changes before full integration.
+### Phase 1: VLR.gg Scraping Infrastructure
+**Rationale:** No dependencies on Valoscribe processing, can validate VLR.gg scraping independently. Builds foundation for all downstream work. Low risk - self-contained, no impact on existing code.
 
 **Delivers:**
-- Event dataclass with typed schema
-- EventEmitter component (StateChange → Event transformation)
-- EventStore component (JSONL append-only writer)
-- Match session management (match_id, start/stop, metadata)
-- Integration tests (state → events → file validation)
+- ProcessingManifest with VODRecord schema and atomic persistence
+- ProcessingConfig with environment-based paths and rate limits
+- VLREventScraper that discovers match URLs and VOD metadata from VLR.gg tournament pages
+- Manifest populated with 50-100 VODRecords from 1-2 tournaments
 
 **Addresses features:**
-- Persistent event logging (replaces game_state.json overwriting)
-- Match session management (table stakes)
+- Table stakes: match metadata, YouTube VOD links, team identification, match timestamps
 
 **Avoids pitfalls:**
-- Pitfall #11: Overwriting game_state.json (persistent append-only log)
-- Pitfall #12: No session management (match_id and map_number metadata)
+- VLR.gg schema drift (Pitfall #6) - schema validation, scraping tests with HTML fixtures, change detection
+- Inconsistent map identifiers (Pitfall #12) - canonical ID strategy (VLR.gg match ID primary key)
 
-**Research flag:** None — event sourcing patterns are well-established.
+**Research flag:** STANDARD - VLR.gg scraping well-documented in community scrapers, BeautifulSoup patterns established
 
-### Phase 3: Pipeline Integration
-**Rationale:** Integrates all components with existing VCTVisionEngine. Proves full pipeline works without requiring new CV features yet.
+### Phase 2: Valoscribe CLI Integration
+**Rationale:** Required by orchestrator, may need Valoscribe changes. Validates critical external dependency before scaling. Medium risk - depends on Valoscribe (active development, but external).
 
 **Delivers:**
-- EventPipeline orchestrator
-- Refactored GameWatcher (uses pipeline instead of direct processing)
-- End-to-end tests (mock frame → event log)
-- ROI consolidation (config.py vs vision_engine.py cleanup)
+- Verified/added Valoscribe CLI commands: scrape-vlr, split-metadata, download, process-vod
+- Tested download + process pipeline on 1 VOD end-to-end
+- Documentation of exact Valoscribe commit hash and CLI interface
 
-**Addresses features:**
-- Full pipeline operational (all table stakes features working)
+**Uses stack:**
+- Valoscribe (D:\Git\valoscribe) for VOD processing
+- yt-dlp (via Valoscribe) for YouTube downloads
+
+**Implements architecture:**
+- VODOrchestrator → Valoscribe CLI interface (subprocess calls)
 
 **Avoids pitfalls:**
-- Pitfall #15: Config duplication (single source of truth before building on it)
-- Pitfall #14: No graceful degradation (error handling for OCR failures)
+- Valoscribe CLI interface changes (Architecture Risk #1) - validate early, document commit hash, pin version
 
-**Research flag:** None — integration of existing components.
+**Research flag:** NEEDS RESEARCH - Valoscribe CLI interface must be verified/extended, integration points not fully documented
 
-### Phase 4: Metadata Auto-Detection
-**Rationale:** Extends CV capabilities with team/map extraction. Not blocking for core event pipeline (can use placeholder metadata). Moderate complexity requiring OCR tuning.
+### Phase 3: Orchestration Pipeline
+**Rationale:** Depends on scraping (Phase 1) + Valoscribe CLI (Phase 2). Validates resumable batch processing before scaling to 150 VODs. Medium risk - integration complexity, but well-isolated from existing code.
 
 **Delivers:**
-- MetadataExtractor component
-- ROI definitions for team names, map name
-- OCR preprocessing for text (vs existing digit OCR)
-- Majority-vote validation (10-frame consensus)
-- Fuzzy matching against team/map whitelists
+- VODOrchestrator with download -> process -> cleanup workflow
+- scripts/expand_dataset.py CLI entry point for scraping + processing
+- scripts/summarize_progress.py for progress monitoring
+- Processing pipeline tested on 3-5 VODs, resumability verified (kill + restart)
 
-**Addresses features:**
-- Team identification (table stakes)
-- Map identification (table stakes)
+**Uses stack:**
+- httpx for async VLR.gg requests
+- pyrate-limiter for rate limiting (1 req/sec)
+- tqdm for progress visibility
+
+**Implements architecture:**
+- VODOrchestrator batch processing pipeline
+- Atomic manifest updates with state transitions
 
 **Avoids pitfalls:**
-- Pitfall #7: Team/map OCR typos (fuzzy matching, validation)
+- VOD availability decay (Pitfall #1) - immediate processing within 48 hours, availability checks before queueing
+- Batch processing failure opacity (Pitfall #2) - processing manifest, atomic completion markers, resumable processing, post-run validation
+- Duplicate map processing (Pitfall #11) - deduplication check before processing, manifest lookup
+- Windows path length limit (Pitfall #13) - short map IDs (date + sequential ID)
 
-**Research flag:** LOW — May need tuning of OCR preprocessing parameters for team name text, but basic approach is straightforward.
+**Research flag:** STANDARD - Batch processing patterns well-documented, subprocess orchestration established
 
-### Phase 5: Economy & Round Classification
-**Rationale:** Builds on working pipeline. Requires phase detection state machine to distinguish buy phase vs combat.
+### Phase 4: Dataset Merging and Quality Validation
+**Rationale:** Can defer until training, doesn't block scraping. Validates data quality before committing to 150-map experiments. Low risk - thin wrapper over existing loader.
 
 **Delivers:**
-- Game phase state machine (buy/combat/post-round)
-- Economy event emission during buy phase only
-- Buy type classification (eco/force/full)
-- Round type detection (pistol vs gun rounds)
-- Side detection (attacker/defender)
+- DatasetBuilder that merges existing 71 maps + new scraped maps
+- Quality validation: OCR success rate per map, replay count distribution analysis, tournament-stratified checks
+- Updated experiment scripts to use DatasetBuilder
+- Validation on existing 71 maps + 3-5 new maps (verify feature extraction works)
 
-**Addresses features:**
-- Economy snapshots (table stakes)
-- Round type classification (differentiator)
-- Side detection (differentiator)
-- First blood (differentiator — derived from kill events)
+**Uses stack:**
+- Existing data loader (src/data/loader.py)
+- Existing feature pipeline (src/features/pipeline.py)
 
-**Avoids pitfalls:**
-- Pitfall #4: Buy/combat conflation (phase state machine first)
-
-**Research flag:** None — economy logic is deterministic once phase detection works.
-
-### Phase 6: Advanced Features (Post-MVP)
-**Rationale:** Deferred features requiring either complex CV (agent/ultimate detection) or alternative data sources.
-
-**Delivers (if feasible):**
-- Agent composition extraction (template matching with 22-agent library)
-- Ultimate status tracking (per-player pixel sampling)
-- Alive differential trending
-- Momentum streak detection
-
-**Addresses features:**
-- Agent compositions (differentiator)
-- Ultimate tracking (differentiator)
+**Implements architecture:**
+- DatasetBuilder multi-source dataset builder
+- Integration with existing experiment runner
 
 **Avoids pitfalls:**
-- Pitfall #10: Agent/ultimate CV fragility (requires deep research, may pivot to manual entry or API)
+- ReplayDetector validation failure (Pitfall #3) - OCR success rate tracking, replay_count distribution validation, spot-check protocol, quality gates
+- OCR degradation on older VODs (Pitfall #8) - quality stratification, OCR error rate per map, adaptive thresholds
 
-**Research flag:** HIGH — Agent/ultimate extraction from broadcast is high-difficulty CV problem. Needs feasibility research with actual VCT frames before committing to implementation. Consider alternatives (manual entry, VCT API, pre-game agent select screen extraction).
+**Research flag:** STANDARD - Data merging patterns straightforward, quality metrics well-defined
+
+### Phase 5: Scaled Processing and Experiment Validation
+**Rationale:** Validate pipeline at small scale (Phases 1-4) before processing 150 VODs. Operational scale validation, no code changes. Low risk - proven components.
+
+**Delivers:**
+- 150+ maps processed through pipeline (existing 71 + 80-100 new from VLR.gg)
+- Team strength features (Elo/Glicko, recent form) implemented
+- Experiments on combined dataset: mechanics-only vs mechanics+Elo vs mechanics+Elo+recent_form
+- Ablation study measuring Elo/recent form contribution to log loss
+- SQLite experiment tracking database with results comparison
+
+**Uses stack:**
+- joblib for parallel VOD processing (n_jobs=4)
+- concurrent.futures for experiment orchestration (max_workers=2)
+- SQLite for experiment metadata persistence
+
+**Addresses features:**
+- Differentiators: team strength rating (Elo/Glicko), recent form (time-weighted win rate)
+- Validation: does adding Elo improve log loss vs mechanics-only baseline?
+
+**Avoids pitfalls:**
+- Temporal validation collapse (Pitfall #4) - bootstrapped confidence intervals, convergence testing (plot log loss vs N), hold-out test set, baseline comparison
+- Meta drift blindness (Pitfall #5) - recency weighting, rolling window training, patch-aware splits
+- Ablation study design ambiguity (Pitfall #9) - pre-registered ablation plans, replacement strategy specification, multiple seeds per ablation
+- LOTO misinterpretation (Pitfall #10) - baseline comparison per tournament, stratified analysis by match type
+
+**Research flag:** NEEDS RESEARCH - Team strength rating implementation (Elo vs Glicko, K-factor tuning, time-decay parameters) needs hyperparameter research
 
 ### Phase Ordering Rationale
 
-**Dependency-driven sequencing:**
-- Phases 1-3 must be sequential: StateTracker → EventEmitter/EventStore → EventPipeline integration
-- Phase 4 (metadata) and Phase 5 (economy) can be parallelized or reordered — neither blocks the other
-- Phase 6 is post-MVP, explicitly deferred until core pipeline proven
+- **Phase 1 before 2:** Scraping is independent of Valoscribe processing, can validate VLR.gg data structure without processing VODs
+- **Phase 2 before 3:** Orchestrator depends on Valoscribe CLI, must verify/extend interface before building batch processor
+- **Phase 3 before 4:** Can process 3-5 VODs in Phase 3 to test orchestration, full dataset merging deferred until quality validation needed
+- **Phase 4 before 5:** Quality gates must be established before committing to 150-VOD processing run (20+ hours)
+- **Phase 5 last:** Validates entire pipeline at scale, experiments on full dataset only after proven at small scale
 
-**Risk-based prioritization:**
-- Critical pitfalls (replay detection, debouncing, round transitions) addressed in Phase 1 before any data collection
-- Moderate pitfalls (overlay versioning, phase conflation) addressed in phases 2-5 before multi-match production use
-- High-risk CV features (agent/ultimate) deferred to Phase 6 with research gate
-
-**Incremental validation:**
-- Each phase ends with working integration tests
-- Phase 3 completes MVP (persistent event logs from live streams)
-- Phases 4-5 enhance MVP with metadata and economy
-- Phase 6 is optional based on prediction model performance needs
+**Dependencies minimized:** Phases 1-2 can run in parallel (scraping while extending Valoscribe CLI). Phases 3-4 can overlap (process first 5 VODs in Phase 3, build DatasetBuilder in Phase 4). Phase 5 strictly depends on 1-4 completion.
 
 ### Research Flags
 
-**Phases needing deeper research during planning:**
-- **Phase 6 (Agent/Ultimate Detection):** Complex CV problem with <70% estimated accuracy from broadcast. Needs research on:
-  - Template matching with skin variations
-  - Pre-game agent select screen extraction (larger, clearer images)
-  - VCT API availability for agent comp data
-  - Manual entry UX as fallback
-  - Cost/benefit analysis: Is agent comp data worth the CV complexity?
+**Needs deeper research during planning:**
 
-**Phases with standard patterns (skip research-phase):**
-- **Phase 1:** State diffing is deterministic logic, no domain research needed
-- **Phase 2:** Event sourcing is well-established pattern
-- **Phase 3:** Integration follows standard orchestrator pattern
-- **Phase 4:** OCR extraction similar to existing timer/score (may need parameter tuning but no research)
-- **Phase 5:** Economy logic is game mechanics (well-documented in Valorant guides)
+- **Phase 2 (Valoscribe CLI Integration):** Valoscribe CLI interface not fully documented, may need to add scrape-vlr and split-metadata commands. Integration points inferred from typical CLI patterns, must verify against actual codebase.
+
+- **Phase 5 (Team Strength Ratings):** Elo vs Glicko decision, optimal K-factor for esports, time-decay parameter tuning, handling roster changes. Research found Glicko preferred (handles rating uncertainty), but implementation details (K-factor, decay rate) need hyperparameter search.
+
+**Standard patterns (skip research-phase):**
+
+- **Phase 1 (VLR.gg Scraping):** BeautifulSoup HTML parsing, rate limiting, manifest persistence all well-documented. Community scrapers (axsddlr/vlrggapi, Yuji1702/Valorant-Data-Scrapper) provide reference implementations.
+
+- **Phase 3 (Orchestration):** Subprocess orchestration, batch processing, resumable pipelines all standard Python patterns. joblib parallelization and atomic file writes well-established.
+
+- **Phase 4 (Dataset Merging):** Multi-source dataset loading straightforward, quality metrics (OCR success rate, replay count distribution) defined in existing Valoscribe validation framework.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | MEDIUM | EasyOCR, SQLAlchemy, python-statemachine recommended based on training data; requires Context7/official docs verification of versions and Windows compatibility |
-| Features | MEDIUM-HIGH | Table stakes features (score, kills, economy, spike) reliably extractable from VCT broadcasts; differentiators (agents, ultimates) require CV validation |
-| Architecture | HIGH | Event sourcing, state diffing, append-only logs are proven patterns; component boundaries follow single-responsibility and testability principles |
-| Pitfalls | HIGH | Based on existing codebase analysis (config.py, vision_engine.py, backend.py); replay detection and debouncing are known critical issues in esports CV |
+| Stack | HIGH | All libraries verified against PyPI (httpx 0.28.1, pyrate-limiter 4.0.2, tqdm 4.67.3). Anti-recommendations (Airflow, MLflow) based on scale analysis (150 maps doesn't justify orchestration overhead). |
+| Features | HIGH | VLR.gg data structure verified via WebFetch + community scrapers. Team strength ratings (Elo/Glicko) well-researched in sports prediction literature (69% accuracy documented). Overfitting risks (player stats, agent features) validated by "large p, small n" ML research. |
+| Architecture | HIGH | Existing v2 codebase (loader.py, pipeline.py, experiment.py) analyzed for integration points. Separation of concerns based on proven patterns (scraping separate from processing, processing separate from feature extraction). |
+| Pitfalls | HIGH | VOD availability decay documented in Twitch/YouTube retention policies. Batch processing failure patterns from Microsoft Azure guidance. ReplayDetector validation risks from operational requirements VSCR-03/04 explicitly deferred in v2. Temporal validation collapse from small dataset ML research (N<300 unstable). |
 
-**Overall confidence:** MEDIUM-HIGH
+**Overall confidence:** HIGH
 
-Stack recommendations need version verification, but architectural approach is sound. Feature priorities align with CV extraction feasibility (table stakes = high feasibility, differentiators = medium, anti-features = low/impossible).
+All four research dimensions grounded in verified sources (official docs, PyPI, research papers, existing codebase analysis). Medium confidence items (VLR.gg HTML structure stability, Valoscribe CLI interface) flagged as "needs research during planning" for Phase 2.
 
 ### Gaps to Address
 
-**Version verification (during Phase 1 setup):**
-- Confirm EasyOCR 1.7.x supports Windows GPU (CUDA) with current PyTorch
-- Verify SQLAlchemy 2.0.x API stability and migration from 1.4 (if relevant)
-- Test python-statemachine 2.1.x on Windows 11
+**VLR.gg API availability:** WebSearch found unofficial APIs (axsddlr/vlrggapi), but last update unknown. Need to validate if these work in 2026 or if custom BeautifulSoup scraper required. Mitigation: build custom scraper using community implementations as reference, defer API usage until proven stable.
 
-**Empirical tuning (during implementation):**
-- Optimal debouncing parameters (3-frame vs 5-frame consensus) — test on actual VCT footage
-- OCR preprocessing settings for team names/map (different font than timer/score digits)
-- Replay detection threshold tuning (how much timer regression = definite replay?)
+**VOD coverage rate:** Unknown what % of VLR.gg matches have VOD links. Champions 2025 likely high (~90%), older tournaments lower. Affects dataset scaling feasibility. Mitigation: scrape 1-2 tournaments in Phase 1, measure VOD availability rate before committing to 150-map target.
 
-**2026 VCT broadcast verification (Phase 1 validation):**
-- Cannot confirm overlay format unchanged since training data cutoff (Jan 2025)
-- ROI coordinates may be stale if Riot redesigned overlay in 2025-2026
-- Test extraction pipeline against live VCT match before multi-match production use
+**Agent composition extraction:** VLR.gg match pages show agent comps, but format unclear (icons vs text). Need to inspect actual HTML to confirm scrapability. Mitigation: defer agent features to post-150-map validation (anti-feature due to meta instability), prioritize team strength ratings.
 
-**Agent meta current state (Phase 6 only):**
-- Training data from Jan 2025 — agent balance patches since then may shift composition importance
-- New agents released? Current roster is ~22 agents per training data
-- Only relevant if Phase 6 agent detection is pursued
+**Optimal Elo parameters:** K-factor, initial rating, decay rate for esports unknown. Sports models use K=32, but esports may differ (roster changes, meta volatility). Mitigation: hyperparameter tuning in Phase 5 via Optuna, cross-validate on training data.
 
-**Prediction market validation (post-data collection):**
-- Research assumes event data will be used for prediction models
-- No validation of which features actually improve prediction accuracy
-- Be ready to deprioritize low-value features based on model performance
+**Valoscribe CLI interface:** Assumed commands (scrape-vlr, split-metadata) may not exist, must add to Valoscribe. Mitigation: Phase 2 validates CLI early, we control both repos (Valoscribe actively developed alongside), can add needed commands.
 
 ## Sources
 
 ### Primary (HIGH confidence)
 
-**Existing codebase analysis:**
-- `d:\Git\Val-Prediciton-Model\config.py` — ROI definitions, thresholds, current stack
-- `d:\Git\Val-Prediciton-Model\vision_engine.py` — Frame extraction methods, OCR approaches
-- `d:\Git\Val-Prediciton-Model\backend.py` — Processing loop, state handling (overwriting game_state.json issue)
-- `d:\Git\Val-Prediciton-Model\PROJECT.md` — Project context, constraints, goals
+**Stack research:**
+- PyPI official pages: httpx, pyrate-limiter, tqdm, beautifulsoup4, lxml, streamlink, joblib (versions verified 2026-02-14)
+- SQLite releases (sqlite.org/changes.html) - SQLite 3.51.2 features
+- Python concurrent.futures documentation (docs.python.org) - stdlib ProcessPoolExecutor/ThreadPoolExecutor
+- GitHub repositories: axsddlr/vlrggapi, Yuji1702/Valorant-Data-Scrapper (VLR.gg scraping reference implementations)
 
-**Established architectural patterns:**
-- Event Sourcing Pattern (Martin Fowler) — Append-only event logs, state reconstruction
-- State Machine Pattern — State transitions trigger events
-- Computer Vision Pipelines — Frame extraction → processing → output separation
+**Features research:**
+- VLR.gg Match Results page (WebFetch) - confirmed teams, scores, VOD links, stats structure
+- Kaggle: Valorant vlr.gg Results and Stats dataset - schema includes date, teams, winner, scoreline
+- Sports Ratings Guide: Elo, Glicko, RPI (prosportstance.com) - Elo vs Glicko for esports
+- Unleashing AI for Esports Prediction (toolify.ai) - 69% accuracy with Elo/Glicko documented
+- A Predictive Analysis of Valorant Esports (techrxiv.org) - Random Forest 93% accuracy, economy impact
+- Dixon-Coles time-weighting (dashee87.github.io) - exponential decay for recent matches
+
+**Architecture research:**
+- Existing v2 codebase: src/data/loader.py, src/features/pipeline.py, src/modeling/experiment.py (direct code analysis)
+- Valoscribe integration: D:\Git\valoscribe (active development, we control it)
+- Phase 7 research: .planning/phases/07-dataset-expansion/07-RESEARCH.md (yt-dlp, BeautifulSoup patterns)
+
+**Pitfalls research:**
+- Twitch/YouTube VOD storage limits (streamrecorder.io) - retention policies 60/14/7 days
+- Batch error handling strategies (Microsoft Azure docs) - fatal vs non-fatal errors, recovery
+- Evaluation of sample size in ML (pmc.ncbi.nlm.nih.gov) - minimum N=500-1000 to mitigate overfitting
+- Data drift detection guide (labelyourdata.com) - concept drift and monitoring
+- Time-series cross-validation (Medium) - temporal validation best practices
 
 ### Secondary (MEDIUM confidence)
 
-**Training data (as of Jan 2025):**
-- Valorant game mechanics (economy system, round structure, spike mechanics)
-- VCT broadcast overlay characteristics (what's visible, what's hidden)
-- Python CV ecosystem (OpenCV, pytesseract limitations, EasyOCR capabilities)
-- Esports prediction systems (feature engineering, win probability impacts)
+**VLR.gg structure:**
+- Medium: Creating A Valorant Player Stats Dataset - describes scraping with Selenium/BeautifulSoup (may be outdated)
+- VLR.gg scraping community discussion (vlr.gg/30777) - rate limiting recommendations, ToS (unofficial)
 
-**Limitations:**
-- Cannot verify VCT broadcast overlay format for 2026 (WebSearch unavailable)
-- Cannot verify current agent roster or meta shifts since Jan 2025
-- Win probability estimates based on general FPS principles, not Valorant-specific empirical studies
+**Agent meta:**
+- 5 agents dominating VALORANT 2026 (esportsinsider.com) - Clove 54.7% win rate, 59.6% pick rate
+- VALORANT Patch 12.0 Meta Guide (dtgre.com) - Bandit pistol changes, Breeze rework (patch-specific, time-sensitive)
 
-### Tertiary (LOW confidence)
+**Experimental design:**
+- Ablation study best practices (emergentmind.com) - misalignment, ambiguous boundaries (general guidance)
+- ABLATOR framework (MLIR proceedings) - horizontal scaling of ablation experiments (academic framework)
 
-**Requires verification:**
-- EasyOCR version 1.7.x Windows GPU support — Check https://github.com/JaidedAI/EasyOCR
-- SQLAlchemy 2.0.x API — Check https://docs.sqlalchemy.org/
-- python-statemachine 2.1.x — Check https://python-statemachine.readthedocs.io/
-- VCT 2026 overlay format — Test against live match or recent VOD
+### Tertiary (LOW confidence - needs validation)
+
+None. All research findings validated with primary or secondary sources. Areas with insufficient confidence (VLR.gg HTML stability, Valoscribe CLI interface) flagged as "needs research during planning" rather than included as low-confidence findings.
 
 ---
-
-**Research completed:** 2026-02-12
-**Ready for roadmap:** Yes
-
-**Next step:** Roadmap creation with phase-specific planning. Phase 1 (Event Detection Foundation) has no research flags and can begin implementation immediately. Phase 6 (Agent/Ultimate Detection) requires feasibility research before commitment.
+*Research completed: 2026-02-14*
+*Ready for roadmap: yes*
