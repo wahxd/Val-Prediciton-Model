@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-14)
 
 Milestone: v3 Scale Data & Validate at Volume
 Phase: 11 - Repo Cleanup & Organization
-Plan: 1 of 1 complete
+Plan: 2 of 2 complete
 Status: Phase complete
-Last activity: 2026-02-14 — Completed 11-01-PLAN.md (dead code removal and organization)
+Last activity: 2026-02-14 — Completed 11-02-PLAN.md (module structure reorganization)
 
-Progress: ██░░░░░░░░░░ 20% (1/5 phases)
+Progress: ██░░░░░░░░░░ 20% (1/5 phases complete)
 
 ## Shipped Milestones
 
@@ -32,9 +32,9 @@ Progress: ██░░░░░░░░░░ 20% (1/5 phases)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 27 (v1: 4, v2: 22, v3: 1)
-- Average duration: 9.2 min/plan
-- Total execution time: ~4.1 hours
+- Total plans completed: 28 (v1: 4, v2: 22, v3: 2)
+- Average duration: 9.5 min/plan
+- Total execution time: ~4.4 hours
 
 **v3 Progress:**
 - 5 phases (11-15)
@@ -117,10 +117,18 @@ Progress: ██░░░░░░░░░░ 20% (1/5 phases)
 - Phase 12 will repopulate with complete metadata
 - Impact: Consistent data quality across all processed maps
 
+**Module structure reorganization (Phase 11-02):**
+- src/ has 6 packages: config, data, features, modeling, pipeline, scraping
+- src/config/ centralizes all *Config classes (data, modeling, processing)
+- src/scraping/ contains only VLR.gg web scraping (VLREventScraper)
+- src/pipeline/ contains VOD processing orchestration (manifest, orchestrator)
+- Circular import resolved via lazy import in VODOrchestrator
+- Impact: Clean separation for Phase 12 (scraping) and Phase 13 (pipeline)
+
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: Completed Phase 11 Plan 01 (dead code removal and organization)
+Stopped at: Completed Phase 11 Plan 02 (module structure reorganization)
 Next: Start Phase 12 (Data Sourcing / VLR.gg Scraping)
 Resume file: None
 
