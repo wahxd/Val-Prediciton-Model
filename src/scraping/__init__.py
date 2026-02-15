@@ -2,5 +2,12 @@
 from src.scraping.vlr_events import VLREventScraper
 from src.scraping.vlr_match_scraper import VLRMatchScraper
 from src.scraping.youtube_vod_finder import YouTubeVODFinder, QuotaExhaustedError
+from src.scraping.tournament_scraper import TournamentScraper
 
-__all__ = ["VLREventScraper", "VLRMatchScraper", "YouTubeVODFinder", "QuotaExhaustedError"]
+__all__ = [
+    "VLREventScraper",
+    "VLRMatchScraper",
+    "YouTubeVODFinder",
+    "QuotaExhaustedError",
+    "TournamentScraper"
+]

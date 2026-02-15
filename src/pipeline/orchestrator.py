@@ -101,11 +101,17 @@ class VODOrchestrator:
         event_url: str,
         tournament_name: str
     ) -> int:
-        """Discover VODs from VLR.gg event page and add to manifest.
+        """DEPRECATED: Use TournamentScraper directly instead.
 
-        Uses VLREventScraper to discover match URLs, then for each match:
-        1. Calls `valoscribe scrape-vlr` to get series metadata
-        2. Creates VODRecord entries in manifest for each map with VOD URL
+        This method uses the old scraping workflow. For new code, use:
+
+        ```python
+        from src.scraping.tournament_scraper import TournamentScraper
+        import asyncio
+
+        scraper = TournamentScraper(manifest, youtube_api_key=...)
+        stats = asyncio.run(scraper.scrape_tournament(event_url, tournament_name))
+        ```
 
         Args:
             event_url: VLR.gg event/tournament URL
@@ -114,22 +120,18 @@ class VODOrchestrator:
         Returns:
             Count of new VODs added to manifest
         """
-        # Import here to avoid circular import (scraping -> pipeline -> scraping)
-        from src.scraping.vlr_events import VLREventScraper
-
-        scraper = VLREventScraper(rate_limit_seconds=1.5)
-
-        # Use the VLREventScraper's discover_vods method which handles
-        # discovering match URLs and calling Valoscribe's scrape_match
-        new_vods = scraper.discover_vods(event_url, self.manifest, tournament_name)
-
-        log.info(
-            "Discovery complete",
-            new_vods=new_vods,
-            tournament=tournament_name
+        log.warning(
+            "deprecated_method",
+            method="scrape_and_populate",
+            suggestion="Use TournamentScraper directly for new scraping workflows"
         )
 
-        return new_vods
+        # For backward compatibility, could implement wrapper here
+        # But better to force migration to new TournamentScraper
+        raise NotImplementedError(
+            "scrape_and_populate() is deprecated. Use TournamentScraper instead. "
+            "See src/scraping/tournament_scraper.py and scripts/scrape_tournaments.py"
+        )
 
     def process_single_vod(self, record: VODRecord) -> bool:
         """Process a single VOD: download, process through Valoscribe, cleanup.
