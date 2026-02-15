@@ -10,10 +10,10 @@ See: .planning/PROJECT.md (updated 2026-02-14)
 ## Current Position
 
 Milestone: v3 Scale Data & Validate at Volume
-Phase: 12 - Data Sourcing / VLR.gg Scraping
-Plan: 4 of 4 complete
-Status: Phase complete
-Last activity: 2026-02-15 — Completed 12-04-PLAN.md (Tournament scraper integration)
+Phase: 13 - VOD Processing Pipeline
+Plan: 1 of 3 complete
+Status: In progress
+Last activity: 2026-02-15 — Completed 13-01-PLAN.md (Manifest & config extensions)
 
 Progress: ████░░░░░░░░ 40% (2/5 phases complete)
 
@@ -32,14 +32,14 @@ Progress: ████░░░░░░░░ 40% (2/5 phases complete)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 32 (v1: 4, v2: 22, v3: 6)
-- Average duration: 8.2 min/plan
-- Total execution time: ~4.8 hours
+- Total plans completed: 33 (v1: 4, v2: 22, v3: 7)
+- Average duration: 7.9 min/plan
+- Total execution time: ~4.9 hours
 
 **v3 Progress:**
 - 5 phases (11-15)
 - 25 requirements
-- Completed: 2 phases (11, 12), 11/25 requirements (CLEAN-01 through CLEAN-05, SCRP-01 through SCRP-06)
+- Completed: 2 phases (11, 12), 13/25 requirements (CLEAN-01 through CLEAN-05, SCRP-01 through SCRP-06, PROC-04, PROC-05)
 - Target: 150+ maps processed
 
 ## Accumulated Context
@@ -162,12 +162,20 @@ Progress: ████░░░░░░░░ 40% (2/5 phases complete)
 - Accepts unlisted YouTube VODs (event organizers often upload as unlisted)
 - Impact: Manifest ready for Phase 13 VOD processing pipeline
 
+**Manifest & config extensions (Phase 13-01):**
+- VODRecord.quality_metrics: Dict field stores quality validation results (overall_score, tier, checks)
+- Granular failure statuses: download_failed (private/deleted VODs) vs processing_failed (OCR errors)
+- Batch processing config: batch_size=20, circuit_breaker_threshold=5, download_timeout_seconds=1800
+- QualityValidator: Bridges Valoscribe output files to quality scoring system
+- JSON-serializable metrics dict enables Phase 14 filtering by quality tier
+- Impact: Foundation ready for BatchProcessor (13-02) and CLI (13-03)
+
 ## Session Continuity
 
 Last session: 2026-02-15
-Stopped at: Completed Phase 12 (all 4 plans)
-Next: Phase 13 — VOD Processing Pipeline
+Stopped at: Completed 13-01-PLAN.md (Manifest & config extensions)
+Next: 13-02 — BatchProcessor implementation
 Resume file: None
 
 ---
-*v3 Scale Data & Validate at Volume — Phase 12 complete, ready for Phase 13.*
+*v3 Scale Data & Validate at Volume — Phase 13 in progress (1/3 plans complete).*
