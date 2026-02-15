@@ -1,0 +1,28 @@
+==================================================
+SCRAPING REPORT
+==================================================
+
+Tournament: Masters Bangkok 2024
+  Matches found: 33
+  Maps found: 103
+  Maps with accessible VOD: 83
+  Maps skipped: 20
+    - No YouTube VOD found: 20
+
+Tournament: VCT Americas 2024 Stage 1
+  Matches found: 34
+  Maps found: 106
+  Maps with accessible VOD: 86
+  Maps skipped: 20
+    - No YouTube VOD found: 20
+
+==================================================
+TOTALS
+==================================================
+Total matches found: 67
+Total maps found: 209
+Total maps with VODs: 169
+Total maps skipped: 40
+YouTube API quota used: 0/10000
+YouTube API quota remaining: 10000
+Manifest records (pending): 169
