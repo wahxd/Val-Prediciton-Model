@@ -39,6 +39,11 @@ class VODRecord:
         started_at: ISO timestamp when processing started
         completed_at: ISO timestamp when processing completed
         processing_time_seconds: Total processing time
+        player_stats: Per-player statistics from VLR.gg (optional)
+        agent_compositions: Agent picks per map (optional)
+        player_vlr_ids: Mapping of player names to VLR.gg player IDs (optional)
+        match_score: Series score in "2-1" format (optional)
+        match_outcome: Map outcome "team1_win" or "team2_win" (optional)
     """
     vod_id: str
     youtube_url: str
@@ -57,6 +62,11 @@ class VODRecord:
     started_at: str | None = None
     completed_at: str | None = None
     processing_time_seconds: float | None = None
+    player_stats: dict | None = None
+    agent_compositions: list[dict] | None = None
+    player_vlr_ids: dict[str, int] | None = None
+    match_score: str | None = None
+    match_outcome: str | None = None
 
 
 class ProcessingManifest:
