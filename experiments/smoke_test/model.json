@@ -1,0 +1,34 @@
+{
+  "model_type": "logistic_regression",
+  "config": {
+    "model_type": "logistic_regression",
+    "feature_set": "core",
+    "C": 1.0,
+    "solver": "lbfgs",
+    "max_iter": 1000,
+    "random_state": 42
+  },
+  "coefficients": {
+    "coef": [
+      [
+        2.268673559627823,
+        0.2702991088047668,
+        0.788026415353914,
+        -1.317205050659107,
+        -0.2583448667997372
+      ]
+    ],
+    "intercept": [
+      -0.8584303972074904
+    ],
+    "feature_names": null,
+    "classes": [
+      0,
+      1
+    ]
+  },
+  "metadata": {
+    "serialized_at": "2026-02-14T19:24:21.405873Z",
+    "sklearn_version": "1.6.1"
+  }
+}

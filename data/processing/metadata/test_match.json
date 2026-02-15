@@ -1,0 +1,186 @@
+{
+  "match_url": "https://www.vlr.gg/371278/team-vitality-vs-natus-vincere-champions-tour-2024-emea-stage-2-ko?game=all&tab=overview",
+  "teams": [
+    "Team Vitality",
+    "Natus Vincere"
+  ],
+  "maps": [
+    {
+      "map_number": 1,
+      "map_name": "Haven",
+      "vod_url": "https://youtu.be/JGApuB5E_mE?list=PLTlFZO3kdyGATptohoT-WptkTH7G4yo1J&t=1184",
+      "teams": [
+        {
+          "name": "Team Vitality",
+          "starting_side": "attack",
+          "players": [
+            {
+              "name": "trexx",
+              "agent": "sova"
+            },
+            {
+              "name": "Kicks",
+              "agent": "breach"
+            },
+            {
+              "name": "Sayf",
+              "agent": "jett"
+            },
+            {
+              "name": "ceNder",
+              "agent": "omen"
+            },
+            {
+              "name": "runneR",
+              "agent": "cypher"
+            }
+          ]
+        },
+        {
+          "name": "Natus Vincere",
+          "starting_side": "defense",
+          "players": [
+            {
+              "name": "Shao",
+              "agent": "sova"
+            },
+            {
+              "name": "Zyppan",
+              "agent": "neon"
+            },
+            {
+              "name": "ardiis",
+              "agent": "yoru"
+            },
+            {
+              "name": "SUYGETSU",
+              "agent": "cypher"
+            },
+            {
+              "name": "ANGE1",
+              "agent": "omen"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "map_number": 2,
+      "map_name": "Sunset",
+      "vod_url": "https://youtu.be/XwzLIQDHw5Y?list=PLTlFZO3kdyGATptohoT-WptkTH7G4yo1J&t=311",
+      "teams": [
+        {
+          "name": "Team Vitality",
+          "starting_side": "attack",
+          "players": [
+            {
+              "name": "Sayf",
+              "agent": "neon"
+            },
+            {
+              "name": "Kicks",
+              "agent": "kayo"
+            },
+            {
+              "name": "trexx",
+              "agent": "sova"
+            },
+            {
+              "name": "ceNder",
+              "agent": "omen"
+            },
+            {
+              "name": "runneR",
+              "agent": "cypher"
+            }
+          ]
+        },
+        {
+          "name": "Natus Vincere",
+          "starting_side": "defense",
+          "players": [
+            {
+              "name": "Zyppan",
+              "agent": "neon"
+            },
+            {
+              "name": "Shao",
+              "agent": "sova"
+            },
+            {
+              "name": "ardiis",
+              "agent": "kayo"
+            },
+            {
+              "name": "SUYGETSU",
+              "agent": "cypher"
+            },
+            {
+              "name": "ANGE1",
+              "agent": "omen"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "map_number": 3,
+      "map_name": "Ascent",
+      "vod_url": "https://youtu.be/6ZnxQ59yFq0?list=PLTlFZO3kdyGATptohoT-WptkTH7G4yo1J&t=315",
+      "teams": [
+        {
+          "name": "Team Vitality",
+          "starting_side": "attack",
+          "players": [
+            {
+              "name": "trexx",
+              "agent": "sova"
+            },
+            {
+              "name": "Kicks",
+              "agent": "kayo"
+            },
+            {
+              "name": "ceNder",
+              "agent": "omen"
+            },
+            {
+              "name": "Sayf",
+              "agent": "jett"
+            },
+            {
+              "name": "runneR",
+              "agent": "killjoy"
+            }
+          ]
+        },
+        {
+          "name": "Natus Vincere",
+          "starting_side": "defense",
+          "players": [
+            {
+              "name": "SUYGETSU",
+              "agent": "cypher"
+            },
+            {
+              "name": "Zyppan",
+              "agent": "kayo"
+            },
+            {
+              "name": "ardiis",
+              "agent": "jett"
+            },
+            {
+              "name": "Shao",
+              "agent": "omen"
+            },
+            {
+              "name": "ANGE1",
+              "agent": "sova"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

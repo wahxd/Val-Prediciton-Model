@@ -1,0 +1,209 @@
+{
+  "aggregate_metrics": {
+    "log_loss_mean": 0.7409460080832788,
+    "log_loss_std": 0.07787490592931917,
+    "brier_score_mean": 0.26209929678749433,
+    "brier_score_std": 0.0683692274085148,
+    "accuracy_mean": 0.5833333333333333,
+    "accuracy_std": 0.2858859374484328
+  },
+  "overall_metrics": {
+    "log_loss": 0.7161208315116246,
+    "brier_score": 0.2601408476360368,
+    "accuracy": 0.5970149253731343
+  },
+  "n_folds": 26,
+  "fold_metrics": [
+    {
+      "log_loss": NaN,
+      "brier_score": 0.17528597416244304,
+      "accuracy": 1.0
+    },
+    {
+      "log_loss": NaN,
+      "brier_score": 0.1780686035264071,
+      "accuracy": 1.0
+    },
+    {
+      "log_loss": 0.7774157674310248,
+      "brier_score": 0.291133149641193,
+      "accuracy": 0.5
+    },
+    {
+      "log_loss": 0.7529681154806385,
+      "brier_score": 0.2799716954359918,
+      "accuracy": 0.3333333333333333
+    },
+    {
+      "log_loss": 0.6768518980413614,
+      "brier_score": 0.24166148671593546,
+      "accuracy": 0.6666666666666666
+    },
+    {
+      "log_loss": 0.7237976320813796,
+      "brier_score": 0.2650172653425624,
+      "accuracy": 0.5
+    },
+    {
+      "log_loss": 0.9839566078281866,
+      "brier_score": 0.3821122553554351,
+      "accuracy": 0.3333333333333333
+    },
+    {
+      "log_loss": NaN,
+      "brier_score": 0.1657747173056296,
+      "accuracy": 1.0
+    },
+    {
+      "log_loss": NaN,
+      "brier_score": 0.3525843622071172,
+      "accuracy": 0.0
+    },
+    {
+      "log_loss": NaN,
+      "brier_score": 0.47715820012091725,
+      "accuracy": 0.0
+    },
+    {
+      "log_loss": 0.6704669030059389,
+      "brier_score": 0.2389674328175761,
+      "accuracy": 0.5
+    },
+    {
+      "log_loss": 0.7340794399588243,
+      "brier_score": 0.2698276261072427,
+      "accuracy": 0.5
+    },
+    {
+      "log_loss": 0.8109580619990823,
+      "brier_score": 0.3074708676550802,
+      "accuracy": 0.3333333333333333
+    },
+    {
+      "log_loss": 0.8065079637432615,
+      "brier_score": 0.3054692941388699,
+      "accuracy": 0.3333333333333333
+    },
+    {
+      "log_loss": 0.7336185455972415,
+      "brier_score": 0.2695542094656196,
+      "accuracy": 0.5
+    },
+    {
+      "log_loss": NaN,
+      "brier_score": 0.17708926634159028,
+      "accuracy": 1.0
+    },
+    {
+      "log_loss": NaN,
+      "brier_score": 0.19588310574878579,
+      "accuracy": 1.0
+    },
+    {
+      "log_loss": 0.8118242578660991,
+      "brier_score": 0.307503494187004,
+      "accuracy": 0.3333333333333333
+    },
+    {
+      "log_loss": 0.7031763946498731,
+      "brier_score": 0.2549835153208392,
+      "accuracy": 0.5
+    },
+    {
+      "log_loss": 0.6874462461224576,
+      "brier_score": 0.2467795263745988,
+      "accuracy": 0.6666666666666666
+    },
+    {
+      "log_loss": 0.6672024035311607,
+      "brier_score": 0.23709784947942222,
+      "accuracy": 0.6666666666666666
+    },
+    {
+      "log_loss": 0.6792432859548573,
+      "brier_score": 0.24222432180124662,
+      "accuracy": 0.6666666666666666
+    },
+    {
+      "log_loss": 0.6469881535034087,
+      "brier_score": 0.22719173486946875,
+      "accuracy": 0.6666666666666666
+    },
+    {
+      "log_loss": 0.6998269505713665,
+      "brier_score": 0.2529667590632454,
+      "accuracy": 0.6666666666666666
+    },
+    {
+      "log_loss": NaN,
+      "brier_score": 0.18621962711166146,
+      "accuracy": 1.0
+    },
+    {
+      "log_loss": 0.7706995181328571,
+      "brier_score": 0.2865853761789704,
+      "accuracy": 0.5
+    }
+  ],
+  "naive_baselines": {
+    "naive_prior": {
+      "log_loss": 0.6931471805599454,
+      "brier_score": 0.25,
+      "accuracy": 0.5970149253731343
+    },
+    "majority_class": {
+      "log_loss": 0.7504654566857504,
+      "brier_score": 0.27823568723546455,
+      "accuracy": 0.40298507462686567
+    }
+  },
+  "beats_naive_prior": false,
+  "beats_majority_class": true,
+  "calibration_validation": {
+    "passes": false,
+    "bins_within_tolerance": 0,
+    "total_bins": 3,
+    "max_deviation": 0.7192228864452477
+  },
+  "game_mechanics_validation": {
+    "passes": true,
+    "game_mechanic_count": 10,
+    "game_mechanic_pct": 100.0,
+    "top_10_features": [
+      "score_differential",
+      "adjusted_score_diff",
+      "first_half_score_team1",
+      "first_half_score_team2",
+      "max_win_streak_team1",
+      "max_loss_streak_team2",
+      "team1_on_attack_first",
+      "final_score_team2",
+      "final_score_team1",
+      "max_win_streak_team2"
+    ]
+  },
+  "thesis_validation": {
+    "hierarchy_respected": false,
+    "level_counts": {
+      "side_map": 3,
+      "pistol": 0,
+      "economy": 0,
+      "momentum": 3,
+      "combat": 0,
+      "other": 4
+    },
+    "level_avg_importance": {
+      "side_map": 0.18493624976529555,
+      "pistol": 0.026475246169964318,
+      "economy": 0.0,
+      "momentum": 0.20316243639543288,
+      "combat": 0.07458882669760052,
+      "other": 0.2645695295983221
+    },
+    "game_mechanics_pct": 60.0,
+    "interpretation": "Thesis hierarchy violated. 1 concern(s) detected. 60% of top 10 are game mechanics.",
+    "concerns": [
+      "Momentum features (avg 0.2032) ranked higher than Economy features (avg 0.0000) - momentum overrated"
+    ]
+  }
+}

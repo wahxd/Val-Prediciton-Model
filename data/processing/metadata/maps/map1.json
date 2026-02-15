@@ -1,0 +1,68 @@
+{
+  "teams": [
+    {
+      "name": "Team Vitality",
+      "starting_side": "attack"
+    },
+    {
+      "name": "Natus Vincere",
+      "starting_side": "defense"
+    }
+  ],
+  "players": [
+    {
+      "name": "trexx",
+      "team": "Team Vitality",
+      "agent": "sova"
+    },
+    {
+      "name": "Kicks",
+      "team": "Team Vitality",
+      "agent": "breach"
+    },
+    {
+      "name": "Sayf",
+      "team": "Team Vitality",
+      "agent": "jett"
+    },
+    {
+      "name": "ceNder",
+      "team": "Team Vitality",
+      "agent": "omen"
+    },
+    {
+      "name": "runneR",
+      "team": "Team Vitality",
+      "agent": "cypher"
+    },
+    {
+      "name": "Shao",
+      "team": "Natus Vincere",
+      "agent": "sova"
+    },
+    {
+      "name": "Zyppan",
+      "team": "Natus Vincere",
+      "agent": "neon"
+    },
+    {
+      "name": "ardiis",
+      "team": "Natus Vincere",
+      "agent": "yoru"
+    },
+    {
+      "name": "SUYGETSU",
+      "team": "Natus Vincere",
+      "agent": "cypher"
+    },
+    {
+      "name": "ANGE1",
+      "team": "Natus Vincere",
+      "agent": "omen"
+    }
+  ],
+  "map": "Haven",
+  "map_number": 1,
+  "vod_url": "https://youtu.be/JGApuB5E_mE?list=PLTlFZO3kdyGATptohoT-WptkTH7G4yo1J&t=1184",
+  "match_url": "https://www.vlr.gg/371278/team-vitality-vs-natus-vincere-champions-tour-2024-emea-stage-2-ko?game=all&tab=overview"
+}

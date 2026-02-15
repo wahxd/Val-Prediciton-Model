@@ -1,0 +1,55 @@
+{
+  "model_type": "logistic_regression",
+  "config": {
+    "model_type": "logistic_regression",
+    "feature_set": "core",
+    "C": 1.0,
+    "penalty": "l2",
+    "solver": "lbfgs",
+    "max_iter": 1000,
+    "max_depth": 3,
+    "min_child_weight": 5,
+    "n_estimators": 50,
+    "learning_rate": 0.1,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1.0,
+    "random_state": 42
+  },
+  "coefficients": {
+    "coef": [
+      [
+        0.5711184046310148,
+        -0.5918558325434884,
+        1.1629742371745038,
+        -0.020737427912473835,
+        -0.05160606016925645,
+        0.0015686443683157198,
+        -0.0353676998881646,
+        -0.03379905551984888,
+        -0.011025092098404727,
+        0.09414933089191928,
+        -0.02672734359165119,
+        -0.07713432311433709,
+        0.008711265273390702,
+        0.10893627178810475,
+        0.10893627178810475,
+        0.008711265273390702,
+        0.004815887398143619
+      ]
+    ],
+    "intercept": [
+      0.009515639373220116
+    ],
+    "feature_names": null,
+    "classes": [
+      0,
+      1
+    ]
+  },
+  "metadata": {
+    "serialized_at": "2026-02-15T00:32:52.066015Z",
+    "sklearn_version": "1.6.1"
+  }
+}

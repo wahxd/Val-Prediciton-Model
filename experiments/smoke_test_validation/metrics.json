@@ -1,0 +1,70 @@
+{
+  "aggregate_metrics": {
+    "log_loss_mean": 0.45654390758882246,
+    "log_loss_std": 0.0578726577509904,
+    "brier_score_mean": 0.14436329137290665,
+    "brier_score_std": 0.029305967040013464,
+    "accuracy_mean": 0.81,
+    "accuracy_std": 0.0768114574786861
+  },
+  "overall_metrics": {
+    "log_loss": 0.45654390758882246,
+    "brier_score": 0.14436329137290663,
+    "accuracy": 0.81
+  },
+  "n_folds": 4,
+  "fold_metrics": [
+    {
+      "log_loss": 0.4649261446146354,
+      "brier_score": 0.1542135767528336,
+      "accuracy": 0.76
+    },
+    {
+      "log_loss": 0.4889252751950755,
+      "brier_score": 0.15652941432246556,
+      "accuracy": 0.84
+    },
+    {
+      "log_loss": 0.36050720634434874,
+      "brier_score": 0.09496267240363294,
+      "accuracy": 0.92
+    },
+    {
+      "log_loss": 0.5118170042012303,
+      "brier_score": 0.1717475020126945,
+      "accuracy": 0.72
+    }
+  ],
+  "naive_baselines": {
+    "naive_prior": {
+      "log_loss": 0.6931471805599453,
+      "brier_score": 0.25,
+      "accuracy": 0.52
+    },
+    "majority_class": {
+      "log_loss": 0.6955486753969029,
+      "brier_score": 0.2511999999999999,
+      "accuracy": 0.48
+    }
+  },
+  "beats_naive_prior": true,
+  "beats_majority_class": true,
+  "calibration_validation": {
+    "passes": false,
+    "bins_within_tolerance": 4,
+    "total_bins": 10,
+    "max_deviation": 0.31631173242677235
+  },
+  "game_mechanics_validation": {
+    "passes": true,
+    "game_mechanic_count": 5,
+    "game_mechanic_pct": 100.0,
+    "top_10_features": [
+      "pistol_wins",
+      "score_diff",
+      "economy_diff",
+      "streak_length",
+      "first_blood_rate"
+    ]
+  }
+}
