@@ -83,32 +83,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLEAN-03 | Phase 11 | Pending |
 | CLEAN-04 | Phase 11 | Pending |
 | CLEAN-05 | Phase 11 | Pending |
-| SCRP-01 | TBD | Pending |
-| SCRP-02 | TBD | Pending |
-| SCRP-03 | TBD | Pending |
-| SCRP-04 | TBD | Pending |
-| SCRP-05 | TBD | Pending |
-| SCRP-06 | TBD | Pending |
-| PROC-01 | TBD | Pending |
-| PROC-02 | TBD | Pending |
-| PROC-03 | TBD | Pending |
-| PROC-04 | TBD | Pending |
-| PROC-05 | TBD | Pending |
-| PROC-06 | TBD | Pending |
-| EXPR-01 | TBD | Pending |
-| EXPR-02 | TBD | Pending |
-| EXPR-03 | TBD | Pending |
-| EXPR-04 | TBD | Pending |
-| EXPR-05 | TBD | Pending |
-| ITER-01 | TBD | Pending |
-| ITER-02 | TBD | Pending |
-| ITER-03 | TBD | Pending |
+| SCRP-01 | Phase 12 | Pending |
+| SCRP-02 | Phase 12 | Pending |
+| SCRP-03 | Phase 12 | Pending |
+| SCRP-04 | Phase 12 | Pending |
+| SCRP-05 | Phase 12 | Pending |
+| SCRP-06 | Phase 12 | Pending |
+| PROC-01 | Phase 13 | Pending |
+| PROC-02 | Phase 13 | Pending |
+| PROC-03 | Phase 13 | Pending |
+| PROC-04 | Phase 13 | Pending |
+| PROC-05 | Phase 13 | Pending |
+| PROC-06 | Phase 13 | Pending |
+| EXPR-01 | Phase 14 | Pending |
+| EXPR-02 | Phase 14 | Pending |
+| EXPR-03 | Phase 14 | Pending |
+| EXPR-04 | Phase 14 | Pending |
+| EXPR-05 | Phase 14 | Pending |
+| ITER-01 | Phase 15 | Pending |
+| ITER-02 | Phase 15 | Pending |
+| ITER-03 | Phase 15 | Pending |
 
 **Coverage:**
 - v3 requirements: 25 total
-- Mapped to phases: 5 (CLEAN only, rest TBD)
-- Unmapped: 20
+- Mapped to phases: 25/25 (100%)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-14*
-*Last updated: 2026-02-14 after initial definition*
+*Traceability updated: 2026-02-14*
+*Last updated: 2026-02-14*
