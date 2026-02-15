@@ -1,1 +1,1 @@
-"""Valorant VCT event detection and state management package."""
+"""Valorant VCT match prediction model."""
