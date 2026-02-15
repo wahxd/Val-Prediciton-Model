@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-14)
 
 **Core value:** A prediction model accurate enough to identify edge against Polymarket prices on VCT match outcomes.
-**Current focus:** v2 milestone shipped. Planning next milestone.
+**Current focus:** v3 — Scale data & validate at volume
 
 ## Current Position
 
-Phase: v2 complete (10 of 10)
-Plan: All complete
-Status: Between milestones
-Last activity: 2026-02-14 — v2 milestone archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-14 — Milestone v3 started
 
-Progress: [############] 100% (v1 + v2 complete)
+Progress: ░░░░░░░░░░░░ 0%
 
 ## Shipped Milestones
 
@@ -39,23 +39,21 @@ Progress: [############] 100% (v1 + v2 complete)
 
 ### Pending Todos
 
-- Run experiments on real VCT data (immediate next step)
 - Process 46 queued VODs through Valoscribe (~15-20hr processing time)
 - Reprocess 71 Champions maps to verify VSCR-03/04 (can combine with above)
-- Decide on v3 scope based on experiment results (trading infrastructure if model shows edge)
 
 ### Blockers/Concerns
 
 - Framework validated on synthetic data only; real-data results are unknown
 - 46 VODs queued but not yet processed (15-20hr processing time)
 - VSCR-03/04 operationally unverified (folded into VOD processing)
+- VLR.gg scraping: site structure may change, need to handle rate limiting
 
 ## Session Continuity
 
 Last session: 2026-02-14
-Stopped at: v2 milestone archived, ready for next milestone
+Stopped at: v3 milestone initialization
 Resume file: None
 
 ---
-*v2 Prediction Model milestone SHIPPED and ARCHIVED.*
-*Next: `/gsd:new-milestone` when ready for v3.*
+*v3 Scale Data & Validate at Volume — defining requirements.*

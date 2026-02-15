@@ -8,9 +8,15 @@ A prediction framework for VCT (Valorant Champions Tour) match outcomes (map win
 
 A prediction model accurate enough to identify edge against Polymarket prices on VCT match outcomes.
 
-## Current State: v2 Shipped
+## Current Milestone: v3 Scale Data & Validate at Volume
 
-**v2 Prediction Model shipped 2026-02-14.** The framework is built and tested (340+ tests). Next step: run experiments on real VCT data, then build v3 trading infrastructure if the model shows predictive edge.
+**Goal:** Scale the training dataset by scraping VLR.gg for match data and YouTube VOD links, process 150+ maps through Valoscribe, then run real-data experiments to validate whether the model has predictive edge.
+
+**Target features:**
+- VLR.gg scraper for match results, player stats, agent comps, and YouTube VOD links
+- Automated VOD processing pipeline at scale via Valoscribe
+- Checkpoint and full-map experiments on combined dataset
+- Model iteration with Optuna tuning, ablation studies, and cross-tournament validation on real data
 
 See `.planning/MILESTONES.md` for full milestone history.
 
@@ -39,19 +45,23 @@ See `.planning/MILESTONES.md` for full milestone history.
 
 ### Active
 
-(No active requirements — next milestone not yet planned)
+- [ ] Scrape VLR.gg for VCT match results, player stats, agent compositions, and YouTube VOD links
+- [ ] Build match manifest mapping VLR.gg data to Valoscribe processing targets
+- [ ] Process 150+ maps through Valoscribe at scale
+- [ ] Run checkpoint and full-map prediction experiments on combined dataset
+- [ ] Model iteration: Optuna tuning, ablation studies, cross-tournament validation on real data
+- [ ] Validate whether model shows predictive edge on real VCT data
 
 ### Out of Scope
 
-- Contract price data integration (Polymarket/Kalshi) — v3 milestone
-- Kelly criterion position sizing — v3 milestone
-- Automated trade execution — v3 milestone
-- Live stream event detection — v3 milestone (retrofit Valoscribe for live)
-- Real-time prediction during live matches — v3 milestone
+- Contract price data integration (Polymarket/Kalshi) — v4 milestone (validate edge first)
+- Kelly criterion position sizing — v4 milestone
+- Automated trade execution — v4 milestone
+- Live stream event detection — v4 milestone (retrofit Valoscribe for live)
+- Real-time prediction during live matches — v4 milestone
 - Mobile or web deployment — local tool for now
-- Deep learning / neural nets — dataset too small; gradient boosting outperforms at n=71
-- Player-level prediction features — overfits on small dataset
-- Per-agent win rate features — meta shifts between patches, unstable signal
+- Deep learning / neural nets — reassess after dataset scales past 200+ maps
+- Per-agent win rate features — meta shifts between patches, unstable signal (VLR.gg agent data available but deferred)
 
 ## Context
 
@@ -67,11 +77,11 @@ See `.planning/MILESTONES.md` for full milestone history.
 
 ## Constraints
 
-- **Data source**: Valoscribe's processed JSONL event logs from VCT VODs (Champions 2025 + expansion tournaments)
-- **Tech stack**: Python ecosystem (scikit-learn, XGBoost, Optuna, pandas, numpy, SHAP)
+- **Data sources**: VLR.gg (match results, player stats, VOD links) + Valoscribe (JSONL event logs from VOD processing)
+- **Tech stack**: Python ecosystem (scikit-learn, XGBoost, Optuna, pandas, numpy, SHAP) + web scraping
 - **Platform**: Windows 11 development environment
 - **Storage**: Local-first — no cloud infrastructure
-- **Training data**: 71 maps available, 46 more queued, expandable by processing more VODs
+- **Training data**: 71 maps processed, 46 queued, scaling to 150+ via VLR.gg sourcing
 
 ## Key Decisions
 
@@ -90,5 +100,7 @@ See `.planning/MILESTONES.md` for full milestone history.
 | Momentum as simple score modifier (0.03) | Not feature-based; series calibration validates | ✓ Good — avoids overcomplication |
 | Leave-one-tournament-out CV is diagnostic only | Mixed temporal training is default; LOTO for investigation | ✓ Good — avoids overfitting to tournament structure |
 
+| v3 = data scaling, not trading | Validate model edge before building trading infrastructure | — Pending |
+
 ---
-*Last updated: 2026-02-14 after v2 milestone completion*
+*Last updated: 2026-02-14 after v3 milestone start*
