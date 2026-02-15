@@ -145,6 +145,7 @@ class VODOrchestrator:
         start_time = datetime.now(timezone.utc)
         vod_file = None
         series_metadata_file = None
+        download_phase = True  # Track which phase we're in for granular failure status
 
         try:
             # Step 1: Update status to downloading
@@ -198,12 +199,15 @@ class VODOrchestrator:
             # Download to specific filename
             vod_file = self.config.download_dir / f"{record.vod_id}.mp4"
 
-            self._run_valoscribe_cmd([
-                "download",
-                record.youtube_url,
-                "--output", str(self.config.download_dir),
-                "--overwrite"
-            ])
+            self._run_valoscribe_cmd(
+                [
+                    "download",
+                    record.youtube_url,
+                    "--output", str(self.config.download_dir),
+                    "--overwrite"
+                ],
+                timeout=self.config.download_timeout_seconds
+            )
 
             # Find the downloaded file (Valoscribe names it based on video title)
             # Look for the most recently created .mp4 file in download_dir
@@ -219,6 +223,9 @@ class VODOrchestrator:
                 downloaded_file.rename(vod_file)
 
             log.info("VOD downloaded", file=str(vod_file))
+
+            # Download phase complete -- switch to processing phase
+            download_phase = False
 
             # Step 4: Update status to processing
             self.manifest.update_status(record.vod_id, "processing")
@@ -275,13 +282,19 @@ class VODOrchestrator:
             return True
 
         except subprocess.TimeoutExpired as e:
-            # Timeout is a type of failure
-            error_msg = f"Processing timeout after {self.config.processing_timeout_seconds}s"
-            log.error("VOD processing timeout", vod_id=record.vod_id, error=error_msg)
+            # Timeout - determine which phase timed out
+            if download_phase:
+                error_msg = f"Download timeout after {self.config.download_timeout_seconds}s"
+                status = "download_failed"
+            else:
+                error_msg = f"Processing timeout after {self.config.processing_timeout_seconds}s"
+                status = "processing_failed"
+
+            log.error("VOD processing timeout", vod_id=record.vod_id, error=error_msg, phase="download" if download_phase else "processing")
 
             self.manifest.update_status(
                 record.vod_id,
-                "failed",
+                status,
                 error_message=error_msg,
                 retry_count=record.retry_count + 1
             )
@@ -289,13 +302,15 @@ class VODOrchestrator:
             return False
 
         except Exception as e:
-            # Any other failure
+            # Any other failure - use granular status based on phase
             error_msg = str(e)
-            log.error("VOD processing failed", vod_id=record.vod_id, error=error_msg)
+            status = "download_failed" if download_phase else "processing_failed"
+
+            log.error("VOD processing failed", vod_id=record.vod_id, error=error_msg, phase="download" if download_phase else "processing")
 
             self.manifest.update_status(
                 record.vod_id,
-                "failed",
+                status,
                 error_message=error_msg,
                 retry_count=record.retry_count + 1
             )
