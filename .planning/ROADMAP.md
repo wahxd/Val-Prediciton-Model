@@ -95,6 +95,13 @@ Plans:
 
 **Requirements:** PROC-01, PROC-02, PROC-03, PROC-04, PROC-05, PROC-06
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 13-01-PLAN.md -- Foundation: manifest extensions (quality_metrics, granular statuses), QualityValidator, ProcessingConfig batch fields
+- [ ] 13-02-PLAN.md -- Core: BatchProcessor with tqdm progress, circuit breaker, tournament ordering, partial cleanup
+- [ ] 13-03-PLAN.md -- Integration: CLI script (process_vods.py) with disk space check, batch reporting, human verification
+
 **Success Criteria:**
 1. VODOrchestrator executes download → process → cleanup workflow for queued VODs
 2. YouTube VODs downloaded via Valoscribe/yt-dlp integration
@@ -156,7 +163,7 @@ Plans:
 | 10. Advanced Model, Series Prediction & Retrain | v2 | 5/5 | Complete | 2026-02-14 |
 | 11. Repo Cleanup & Organization | v3 | 2/2 | Complete | 2026-02-14 |
 | 12. Data Sourcing / VLR.gg Scraping | v3 | 4/4 | Complete | 2026-02-15 |
-| 13. VOD Processing Pipeline | v3 | 0/? | Pending | - |
+| 13. VOD Processing Pipeline | v3 | 0/3 | Planned | - |
 | 14. Scaled Experiments | v3 | 0/? | Pending | - |
 | 15. Model Iteration | v3 | 0/? | Pending | - |
 
