@@ -48,6 +48,12 @@ Full details: [milestones/v2-ROADMAP.md](milestones/v2-ROADMAP.md)
 
 **Requirements:** CLEAN-01, CLEAN-02, CLEAN-03, CLEAN-04, CLEAN-05
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 11-01-PLAN.md -- Delete dead code, stray files, superseded scripts; organize experiments and data
+- [ ] 11-02-PLAN.md -- Reorganize src/ modules (pipeline + config packages), update imports
+
 **Success Criteria:**
 1. Root and scripts/ directory contain only active, well-organized files (no stray experiments or temp files)
 2. Corrupted files and installation artifacts removed (temp_verify.txt, analysis.db, =1.11, =3.0)
@@ -143,7 +149,7 @@ Full details: [milestones/v2-ROADMAP.md](milestones/v2-ROADMAP.md)
 | 8. Feature Engineering | v2 | 4/4 | Complete | 2026-02-14 |
 | 9. Baseline Model & Evaluation | v2 | 3/3 | Complete | 2026-02-14 |
 | 10. Advanced Model, Series Prediction & Retrain | v2 | 5/5 | Complete | 2026-02-14 |
-| 11. Repo Cleanup & Organization | v3 | 0/? | Pending | - |
+| 11. Repo Cleanup & Organization | v3 | 0/2 | Planned | - |
 | 12. Data Sourcing / VLR.gg Scraping | v3 | 0/? | Pending | - |
 | 13. VOD Processing Pipeline | v3 | 0/? | Pending | - |
 | 14. Scaled Experiments | v3 | 0/? | Pending | - |
