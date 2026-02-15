@@ -78,11 +78,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLEAN-01 | Phase 11 | Pending |
-| CLEAN-02 | Phase 11 | Pending |
-| CLEAN-03 | Phase 11 | Pending |
-| CLEAN-04 | Phase 11 | Pending |
-| CLEAN-05 | Phase 11 | Pending |
+| CLEAN-01 | Phase 11 | Complete |
+| CLEAN-02 | Phase 11 | Complete |
+| CLEAN-03 | Phase 11 | Complete |
+| CLEAN-04 | Phase 11 | Complete |
+| CLEAN-05 | Phase 11 | Complete |
 | SCRP-01 | Phase 12 | Pending |
 | SCRP-02 | Phase 12 | Pending |
 | SCRP-03 | Phase 12 | Pending |
