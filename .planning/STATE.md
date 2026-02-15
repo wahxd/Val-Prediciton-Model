@@ -136,6 +136,13 @@ Progress: ██░░░░░░░░░░ 20% (1/5 phases complete, 3/6 pla
 - Hishel caching deferred (requires hishel[async] extra)
 - Impact: Foundation ready for VLR.gg scraping in 12-02+
 
+**VLR.gg player stats scraper (Phase 12-02):**
+- VLRMatchScraper: Parse VLR.gg match pages for player stats (ACS, K/D/A, KAST%, ADR, HS%, FK/FD), agent compositions, player VLR IDs
+- VLREventScraper rewritten to async with httpx + pyrate-limiter
+- Removed Valoscribe scrape_match dependency (VLRMatchScraper handles all parsing)
+- 17 tests (10 VLRMatchScraper + 7 async VLREventScraper), all passing
+- Impact: Rich metadata extraction ready for tournament scraping
+
 **YouTube VOD finder (Phase 12-03):**
 - YouTubeVODFinder: YouTube Data API v3 integration for map-specific VOD discovery
 - Validates video accessibility (public + processed status)
